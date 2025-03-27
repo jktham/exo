@@ -9,8 +9,10 @@ default = ["optimize"]
 
 [dependencies]
 error-iter = "0.4"
+glam = "0.30.1"
 log = "0.4"
 pixels = "0.15.0"
+web-time = "1.1.0"
 winit = "0.29"
 winit_input_helper = "0.15"
 

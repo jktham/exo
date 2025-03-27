@@ -11,17 +11,21 @@ use winit::event_loop::EventLoop;
 use winit::keyboard::KeyCode;
 use winit::window::WindowBuilder;
 use winit_input_helper::WinitInputHelper;
+use glam::Vec2;
+use web_time::{SystemTime, UNIX_EPOCH};
 
 const WIDTH: u32 = 320;
 const HEIGHT: u32 = 240;
 const BOX_SIZE: i16 = 64;
 
-/// Representation of the application state. In this example, a box will bounce around the screen.
-struct World {
-    box_x: i16,
-    box_y: i16,
-    velocity_x: i16,
-    velocity_y: i16,
+struct Ship {
+    position: Vec2,
+    velocity: Vec2,
+    thrust: Vec2,
+}
+
+struct Game {
+    ship: Ship,
 }
 
 fn main() {
@@ -121,7 +125,10 @@ async fn run() {
 
         builder.build_async().await.expect("Pixels error")
     };
-    let mut world = World::new();
+    let mut game = Game::new();
+
+    let mut t = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64();
+    let mut dt = 0.0;
 
     let res = event_loop.run(|event, elwt| {
         match event {
@@ -130,7 +137,10 @@ async fn run() {
                 ..
             } => {
                 // Draw the current frame
-                world.draw(pixels.frame_mut());
+                dt = (SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64() - t) as f32;
+                t = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64();
+
+                game.draw(pixels.frame_mut());
                 if let Err(err) = pixels.render() {
                     log_error("pixels.render", err);
                     elwt.exit();
@@ -138,7 +148,7 @@ async fn run() {
                 }
 
                 // Update internal state and request a redraw
-                world.update();
+                game.update(dt);
                 window.request_redraw();
             }
 
@@ -157,9 +167,24 @@ async fn run() {
             _ => (),
         }
 
-        // Handle input events
-        if input.update(&event) && (input.key_pressed(KeyCode::Escape) || input.close_requested()) {
-            elwt.exit();
+        if input.update(&event) {
+            if input.key_pressed(KeyCode::Escape) || input.close_requested() {
+                elwt.exit();
+            }
+
+            game.ship.thrust = Vec2::new(0.0, 0.0);
+            if input.key_held(KeyCode::KeyA) {
+                game.ship.thrust.x -= 100.0;
+            }
+            if input.key_held(KeyCode::KeyD) {
+                game.ship.thrust.x += 100.0;
+            }
+            if input.key_held(KeyCode::KeyW) {
+                game.ship.thrust.y -= 100.0;
+            }
+            if input.key_held(KeyCode::KeyS) {
+                game.ship.thrust.y += 100.0;
+            }
         }
     });
     res.unwrap();
@@ -172,42 +197,39 @@ fn log_error<E: std::error::Error + 'static>(method_name: &str, err: E) {
     }
 }
 
-impl World {
-    /// Create a new `World` instance that can draw a moving box.
+impl Game {
     fn new() -> Self {
         Self {
-            box_x: 24,
-            box_y: 16,
-            velocity_x: 1,
-            velocity_y: 1,
+            ship: Ship {
+                position: Vec2::new(0.0, 0.0),
+                velocity: Vec2::new(0.0, 0.0),
+                thrust: Vec2::new(0.0, 0.0),
+            }
         }
     }
 
-    /// Update the `World` internal state; bounce the box around the screen.
-    fn update(&mut self) {
-        if self.box_x <= 0 || self.box_x + BOX_SIZE > WIDTH as i16 {
-            self.velocity_x *= -1;
+    fn update(&mut self, dt: f32) {
+        if self.ship.position.x <= 0.0 || self.ship.position.x + BOX_SIZE as f32 > WIDTH as f32 {
+            self.ship.velocity.x *= -1.0;
         }
-        if self.box_y <= 0 || self.box_y + BOX_SIZE > HEIGHT as i16 {
-            self.velocity_y *= -1;
+        if self.ship.position.y <= 0.0 || self.ship.position.y + BOX_SIZE as f32 > HEIGHT as f32 {
+            self.ship.velocity.y *= -1.0;
         }
 
-        self.box_x += self.velocity_x;
-        self.box_y += self.velocity_y;
+        self.ship.velocity += self.ship.thrust * dt;
+        self.ship.position += self.ship.velocity * dt;
     }
 
-    /// Draw the `World` state to the frame buffer.
-    ///
-    /// Assumes the default texture format: `wgpu::TextureFormat::Rgba8UnormSrgb`
     fn draw(&self, frame: &mut [u8]) {
         for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
-            let x = (i % WIDTH as usize) as i16;
-            let y = (i / WIDTH as usize) as i16;
+            let x = (i % WIDTH as usize) as f32;
+            let y = (i / WIDTH as usize) as f32;
 
-            let inside_the_box = x >= self.box_x
-                && x < self.box_x + BOX_SIZE
-                && y >= self.box_y
-                && y < self.box_y + BOX_SIZE;
+            let inside_the_box = 
+                x >= self.ship.position.x &&
+                x < self.ship.position.x + BOX_SIZE as f32 &&
+                y >= self.ship.position.y &&
+                y < self.ship.position.y + BOX_SIZE as f32;
 
             let rgba = if inside_the_box {
                 [0x5e, 0x48, 0xe8, 0xff]
