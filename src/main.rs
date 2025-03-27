@@ -11,21 +11,27 @@ use winit::event_loop::EventLoop;
 use winit::keyboard::KeyCode;
 use winit::window::WindowBuilder;
 use winit_input_helper::WinitInputHelper;
-use glam::Vec2;
+use glam::{Mat4, Vec3, Vec4};
 use web_time::{SystemTime, UNIX_EPOCH};
 
 const WIDTH: u32 = 320;
 const HEIGHT: u32 = 240;
-const BOX_SIZE: i16 = 64;
+
+struct Camera {
+    position: Vec3,
+    direction: Vec3,
+    fov: f32,
+}
 
 struct Ship {
-    position: Vec2,
-    velocity: Vec2,
-    thrust: Vec2,
+    position: Vec3,
+    velocity: Vec3,
+    thrust: Vec3,
 }
 
 struct Game {
     ship: Ship,
+    camera: Camera,
 }
 
 fn main() {
@@ -172,18 +178,28 @@ async fn run() {
                 elwt.exit();
             }
 
-            game.ship.thrust = Vec2::new(0.0, 0.0);
+            game.ship.thrust = Vec3::new(0.0, 0.0, 0.0);
             if input.key_held(KeyCode::KeyA) {
-                game.ship.thrust.x -= 100.0;
+                game.ship.thrust.x -= 10.0;
             }
             if input.key_held(KeyCode::KeyD) {
-                game.ship.thrust.x += 100.0;
+                game.ship.thrust.x += 10.0;
+            }
+            if input.key_held(KeyCode::KeyR) {
+                game.ship.thrust.y += 10.0;
+            }
+            if input.key_held(KeyCode::KeyF) {
+                game.ship.thrust.y -= 10.0;
             }
             if input.key_held(KeyCode::KeyW) {
-                game.ship.thrust.y -= 100.0;
+                game.ship.thrust.z -= 10.0;
             }
             if input.key_held(KeyCode::KeyS) {
-                game.ship.thrust.y += 100.0;
+                game.ship.thrust.z += 10.0;
+            }
+            if input.key_held(KeyCode::Space) {
+                game.ship.thrust = Vec3::ZERO;
+                game.ship.velocity = Vec3::ZERO;
             }
         }
     });
@@ -201,43 +217,79 @@ impl Game {
     fn new() -> Self {
         Self {
             ship: Ship {
-                position: Vec2::new(0.0, 0.0),
-                velocity: Vec2::new(0.0, 0.0),
-                thrust: Vec2::new(0.0, 0.0),
-            }
+                position: Vec3::new(0.0, 0.0, 0.0),
+                velocity: Vec3::new(0.0, 0.0, 0.0),
+                thrust: Vec3::new(0.0, 0.0, 0.0),
+            },
+            camera: Camera {
+                position: Vec3::new(0.0, 0.0, 1.0),
+                direction: Vec3::new(0.0, 0.0, -1.0),
+                fov: 90.0,
+            },
         }
     }
 
     fn update(&mut self, dt: f32) {
-        if self.ship.position.x <= 0.0 || self.ship.position.x + BOX_SIZE as f32 > WIDTH as f32 {
-            self.ship.velocity.x *= -1.0;
-        }
-        if self.ship.position.y <= 0.0 || self.ship.position.y + BOX_SIZE as f32 > HEIGHT as f32 {
-            self.ship.velocity.y *= -1.0;
-        }
-
         self.ship.velocity += self.ship.thrust * dt;
         self.ship.position += self.ship.velocity * dt;
     }
 
     fn draw(&self, frame: &mut [u8]) {
+        let p0 = self.transform(self.ship.position);
+        let p1 = self.transform(self.ship.position + Vec3::new(1.0, -1.0, 0.0));
+
         for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
             let x = (i % WIDTH as usize) as f32;
             let y = (i / WIDTH as usize) as f32;
 
             let inside_the_box = 
-                x >= self.ship.position.x &&
-                x < self.ship.position.x + BOX_SIZE as f32 &&
-                y >= self.ship.position.y &&
-                y < self.ship.position.y + BOX_SIZE as f32;
+                x >= p0.x && x < p1.x &&
+                y >= p0.y && y < p1.y;
 
             let rgba = if inside_the_box {
-                [0x5e, 0x48, 0xe8, 0xff]
+                if p0.z < 1.0 {
+                    [0xff, 0x00, 0x00, 0xff]
+                } else {
+                    [0x5e, 0x48, 0xe8, 0xff]
+                }
             } else {
                 [0x48, 0xb2, 0xe8, 0xff]
             };
 
             pixel.copy_from_slice(&rgba);
         }
+    }
+
+    fn transform(&self, pos: Vec3) -> Vec3 {
+        let w = WIDTH as f32;
+        let h = HEIGHT as f32;
+        let n = 0.1;
+        let f = 1000.0;
+        let phi = self.camera.fov / 180.0 * 3.1415;
+        let r = f32::tan(phi/2.0) * n;
+        let t = r * h/w;
+
+        let model = Mat4::from_translation(pos);
+        let view = Mat4::look_at_lh(self.camera.position, self.camera.position + self.camera.direction, Vec3::new(0.0, 1.0, 0.0));
+        let projection = Mat4::from_cols_array(&[
+            n/r, 0.0, 0.0, 0.0,
+            0.0, n/t, 0.0, 0.0,
+            0.0, 0.0, -(f+n)/(f-n), -2.0*f*n/(f-n),
+            0.0, 0.0, -1.0, 0.0,
+        ]).transpose();
+
+        let world = model * Vec4::new(0.0, 0.0, 0.0, 1.0);
+        let eye = view * world;
+        let clip = projection * eye;
+        let ndc = Vec3::new(clip.x/clip.w, clip.y/clip.w, clip.z/clip.w);
+        let mut screen = Vec3::new(w/2.0 * ndc.x + w/2.0, h/2.0 * ndc.y + h/2.0, (f-n)/2.0 * ndc.z + (f+n)/2.0);
+        screen.z /= f;
+        // println!("world: {}", world);
+        // println!("eye: {}", eye);
+        // println!("clip: {}", clip);
+        // println!("ndc: {}", ndc);
+        // println!("screen: {}", screen);
+
+        return screen;
     }
 }
