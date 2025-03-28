@@ -6,19 +6,31 @@ use crate::game::{Camera, Object};
 use crate::{WIDTH, HEIGHT};
 
 pub fn draw_polygon_3d(frame: &mut [u8], polygon: &Vec<Vec3>, model: Mat4, camera: &Camera, color: u32) {
-	for i in 0..polygon.len() {
-		draw_line_3d(frame, polygon[i], polygon[(i+1) % polygon.len()], model, model, camera, color);
+	if polygon.len() == 1 {
+		draw_point_3d(frame, polygon[0], model, camera, color);
+	} else if polygon.len() == 2 {
+		draw_line_3d(frame, polygon[0], polygon[1], model, model, camera, color);
+	} else if polygon.len() != 0 {
+		for i in 0..polygon.len() {
+			draw_line_3d(frame, polygon[i], polygon[(i+1) % polygon.len()], model, model, camera, color);
+		}
 	}
 }
 
 pub fn draw_point_3d(frame: &mut [u8], v: Vec3, model: Mat4, camera: &Camera, color: u32) {
 	let p = transform(v, model, camera);
+	if p.z < 1.0 {
+		return;
+	}
 	draw_pixel(frame, p.x as i32, p.y as i32, color);
 }
 
 pub fn draw_line_3d(frame: &mut [u8], v0: Vec3, v1: Vec3, model0: Mat4, model1: Mat4, camera: &Camera, color: u32) {
 	let p0 = transform(v0, model0, camera);
 	let p1 = transform(v1, model1, camera);
+	if p0.z < 1.0 || p1.z < 1.0 {
+		return;
+	}
 	draw_line(frame, p0.x as i32, p0.y as i32, p1.x as i32, p1.y as i32, color);
 }
 
