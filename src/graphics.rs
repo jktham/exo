@@ -2,11 +2,32 @@ use std::cmp::{max, min};
 use std::mem::swap;
 use glam::{Mat4, Vec3, Vec4};
 
-use crate::game::Camera;
+use crate::game::{Camera, Object};
 use crate::{WIDTH, HEIGHT};
 
-// world to screen
-pub fn transform(pos: Vec3, camera: &Camera) -> Vec3 {
+pub fn draw_point_3d(frame: &mut [u8], v: Vec3, model: Mat4, camera: &Camera, color: u32) {
+	let p = transform(v, model, camera);
+	draw_pixel(frame, p.x as i32, p.y as i32, color);
+}
+
+pub fn draw_line_3d(frame: &mut [u8], v0: Vec3, v1: Vec3, model0: Mat4, model1: Mat4, camera: &Camera, color: u32) {
+	let p0 = transform(v0, model0, camera);
+	let p1 = transform(v1, model1, camera);
+	draw_line(frame, p0.x as i32, p0.y as i32, p1.x as i32, p1.y as i32, color);
+}
+
+pub fn draw_object(frame: &mut [u8], object: &Object, camera: &Camera) {
+	let mut verts = Vec::<Vec3>::new();
+	for i in 0..object.mesh.len() / 3 {
+		let v = Vec3::new(object.mesh[i*3], object.mesh[i*3+1], object.mesh[i*3+2]);
+		verts.push(v);
+	}
+	for i in 0..verts.len() {
+		draw_line_3d(frame, verts[i], verts[(i+1) % verts.len()], object.model, object.model, camera, object.color);
+	}
+}
+
+pub fn transform(vertex: Vec3, model: Mat4, camera: &Camera) -> Vec3 {
 	let w = WIDTH as f32;
 	let h = HEIGHT as f32;
 	let n = 0.1;
@@ -23,7 +44,7 @@ pub fn transform(pos: Vec3, camera: &Camera) -> Vec3 {
 		0.0, 0.0, -1.0, 0.0,
 	]).transpose();
 
-	let world = Vec4::new(pos.x, pos.y, pos.z, 1.0);
+	let world = model * Vec4::new(vertex.x, vertex.y, vertex.z, 1.0);
 	let eye = view * world;
 	let clip = projection * eye;
 	let ndc = Vec3::new(clip.x/clip.w, clip.y/clip.w, clip.z/clip.w);
@@ -38,15 +59,15 @@ pub fn transform(pos: Vec3, camera: &Camera) -> Vec3 {
 	return screen;
 }
 
-pub fn clear(frame: &mut [u8], col: u32) {
+pub fn clear(frame: &mut [u8], color: u32) {
 	for x in 0..WIDTH as i32 {
 		for y in 0..HEIGHT as i32 {
-			draw_pixel(frame, x, y, col);
+			draw_pixel(frame, x, y, color);
 		}
 	}
 }
 
-pub fn draw_rectangle_fill(frame: &mut [u8], mut x0: i32, mut y0: i32, mut x1: i32, mut y1: i32, col: u32) {
+pub fn draw_rectangle_fill(frame: &mut [u8], mut x0: i32, mut y0: i32, mut x1: i32, mut y1: i32, color: u32) {
 	if x1 < x0 {
 		swap(&mut x0, &mut x1);
 	}
@@ -60,12 +81,12 @@ pub fn draw_rectangle_fill(frame: &mut [u8], mut x0: i32, mut y0: i32, mut x1: i
 	y1 = min(y1, HEIGHT as i32);
 	for x in x0..=x1 {
 		for y in y0..=y1 {
-			draw_pixel(frame, x, y, col);
+			draw_pixel(frame, x, y, color);
 		}
 	}
 }
 
-pub fn draw_rectangle(frame: &mut [u8], mut x0: i32, mut y0: i32, mut x1: i32, mut y1: i32, col: u32) {
+pub fn draw_rectangle(frame: &mut [u8], mut x0: i32, mut y0: i32, mut x1: i32, mut y1: i32, color: u32) {
 	if x1 < x0 {
 		swap(&mut x0, &mut x1);
 	}
@@ -80,13 +101,13 @@ pub fn draw_rectangle(frame: &mut [u8], mut x0: i32, mut y0: i32, mut x1: i32, m
 	for x in x0..=x1 {
 		for y in y0..=y1 {
 			if x == x0 || x == x1 || y == y0 || y == y1 {
-				draw_pixel(frame, x, y, col);
+				draw_pixel(frame, x, y, color);
 			}
 		}
 	}
 }
 
-pub fn draw_line(frame: &mut [u8], mut x0: i32, mut y0: i32, mut x1: i32, mut y1: i32, col: u32) {
+pub fn draw_line(frame: &mut [u8], mut x0: i32, mut y0: i32, mut x1: i32, mut y1: i32, color: u32) {
 	if i32::abs(y1 - y0) < i32::abs(x1 - x0) {
 		if x0 > x1 {
 			swap(&mut x0, &mut x1);
@@ -103,7 +124,7 @@ pub fn draw_line(frame: &mut [u8], mut x0: i32, mut y0: i32, mut x1: i32, mut y1
 		let mut y = y0;
 	
 		for x in x0..=x1 {
-			draw_pixel(frame, x, y, col);
+			draw_pixel(frame, x, y, color);
 			if d > 0 {
 				y += yi;
 				d += 2*(dy-dx);
@@ -127,7 +148,7 @@ pub fn draw_line(frame: &mut [u8], mut x0: i32, mut y0: i32, mut x1: i32, mut y1
 		let mut x = x0;
 	
 		for y in y0..=y1 {
-			draw_pixel(frame, x, y, col);
+			draw_pixel(frame, x, y, color);
 			if d > 0 {
 				x += xi;
 				d += 2*(dx-dy);
@@ -138,13 +159,13 @@ pub fn draw_line(frame: &mut [u8], mut x0: i32, mut y0: i32, mut x1: i32, mut y1
 	}
 }
 
-pub fn draw_pixel(frame: &mut [u8], x: i32, y: i32, col: u32) {
+pub fn draw_pixel(frame: &mut [u8], x: i32, y: i32, color: u32) {
 	if x < 0 || x >= WIDTH as i32 || y < 0 || y >= HEIGHT as i32 {
 		return;
 	}
 	let i = ((y * WIDTH as i32 + x) * 4) as usize;
-	frame[i] = (col >> 24) as u8;
-	frame[i+1] = (col >> 16) as u8;
-	frame[i+2] = (col >> 8) as u8;
-	frame[i+3] = (col) as u8;
+	frame[i] = (color >> 24) as u8;
+	frame[i+1] = (color >> 16) as u8;
+	frame[i+2] = (color >> 8) as u8;
+	frame[i+3] = (color) as u8;
 }
