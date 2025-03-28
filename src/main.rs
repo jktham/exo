@@ -11,28 +11,16 @@ use winit::event_loop::EventLoop;
 use winit::keyboard::KeyCode;
 use winit::window::WindowBuilder;
 use winit_input_helper::WinitInputHelper;
-use glam::{Mat4, Vec3, Vec4};
+use glam::Vec3;
 use web_time::{SystemTime, UNIX_EPOCH};
 
 const WIDTH: u32 = 320;
 const HEIGHT: u32 = 240;
 
-struct Camera {
-    position: Vec3,
-    direction: Vec3,
-    fov: f32,
-}
+mod graphics;
 
-struct Ship {
-    position: Vec3,
-    velocity: Vec3,
-    thrust: Vec3,
-}
-
-struct Game {
-    ship: Ship,
-    camera: Camera,
-}
+mod game;
+use game::*;
 
 fn main() {
     #[cfg(target_arch = "wasm32")]
@@ -66,7 +54,7 @@ async fn run() {
     let window = {
         let size = LogicalSize::new(WIDTH as f64, HEIGHT as f64);
         WindowBuilder::new()
-            .with_title("Hello Pixels + Web")
+            .with_title("Exo")
             .with_inner_size(size)
             .with_min_inner_size(size)
             .build(&event_loop)
@@ -142,6 +130,9 @@ async fn run() {
                 event: WindowEvent::RedrawRequested,
                 ..
             } => {
+                // Update internal state
+                game.update(dt);
+
                 // Draw the current frame
                 dt = (SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64() - t) as f32;
                 t = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64();
@@ -153,8 +144,6 @@ async fn run() {
                     return;
                 }
 
-                // Update internal state and request a redraw
-                game.update(dt);
                 window.request_redraw();
             }
 
@@ -210,86 +199,5 @@ fn log_error<E: std::error::Error + 'static>(method_name: &str, err: E) {
     error!("{method_name}() failed: {err}");
     for source in err.sources().skip(1) {
         error!("  Caused by: {source}");
-    }
-}
-
-impl Game {
-    fn new() -> Self {
-        Self {
-            ship: Ship {
-                position: Vec3::new(0.0, 0.0, 0.0),
-                velocity: Vec3::new(0.0, 0.0, 0.0),
-                thrust: Vec3::new(0.0, 0.0, 0.0),
-            },
-            camera: Camera {
-                position: Vec3::new(0.0, 0.0, 1.0),
-                direction: Vec3::new(0.0, 0.0, -1.0),
-                fov: 90.0,
-            },
-        }
-    }
-
-    fn update(&mut self, dt: f32) {
-        self.ship.velocity += self.ship.thrust * dt;
-        self.ship.position += self.ship.velocity * dt;
-    }
-
-    fn draw(&self, frame: &mut [u8]) {
-        let p0 = self.transform(self.ship.position);
-        let p1 = self.transform(self.ship.position + Vec3::new(1.0, -1.0, 0.0));
-
-        for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
-            let x = (i % WIDTH as usize) as f32;
-            let y = (i / WIDTH as usize) as f32;
-
-            let inside_the_box = 
-                x >= p0.x && x < p1.x &&
-                y >= p0.y && y < p1.y;
-
-            let rgba = if inside_the_box {
-                if p0.z < 1.0 {
-                    [0xff, 0x00, 0x00, 0xff]
-                } else {
-                    [0x5e, 0x48, 0xe8, 0xff]
-                }
-            } else {
-                [0x48, 0xb2, 0xe8, 0xff]
-            };
-
-            pixel.copy_from_slice(&rgba);
-        }
-    }
-
-    fn transform(&self, pos: Vec3) -> Vec3 {
-        let w = WIDTH as f32;
-        let h = HEIGHT as f32;
-        let n = 0.1;
-        let f = 1000.0;
-        let phi = self.camera.fov / 180.0 * 3.1415;
-        let r = f32::tan(phi/2.0) * n;
-        let t = r * h/w;
-
-        let model = Mat4::from_translation(pos);
-        let view = Mat4::look_at_lh(self.camera.position, self.camera.position + self.camera.direction, Vec3::new(0.0, 1.0, 0.0));
-        let projection = Mat4::from_cols_array(&[
-            n/r, 0.0, 0.0, 0.0,
-            0.0, n/t, 0.0, 0.0,
-            0.0, 0.0, -(f+n)/(f-n), -2.0*f*n/(f-n),
-            0.0, 0.0, -1.0, 0.0,
-        ]).transpose();
-
-        let world = model * Vec4::new(0.0, 0.0, 0.0, 1.0);
-        let eye = view * world;
-        let clip = projection * eye;
-        let ndc = Vec3::new(clip.x/clip.w, clip.y/clip.w, clip.z/clip.w);
-        let mut screen = Vec3::new(w/2.0 * ndc.x + w/2.0, h/2.0 * ndc.y + h/2.0, (f-n)/2.0 * ndc.z + (f+n)/2.0);
-        screen.z /= f;
-        // println!("world: {}", world);
-        // println!("eye: {}", eye);
-        // println!("clip: {}", clip);
-        // println!("ndc: {}", ndc);
-        // println!("screen: {}", screen);
-
-        return screen;
     }
 }
