@@ -3,7 +3,7 @@ use glam::{Mat4, Vec3};
 use crate::graphics::*;
 
 pub struct Object {
-	pub mesh: Vec<f32>,
+	pub mesh: Vec<Vec<Vec3>>,
 	pub model: Mat4,
 	pub color: u32,
 }
@@ -35,9 +35,22 @@ impl Game {
                 thrust: Vec3::new(0.0, 0.0, 0.0),
 				object: Object {
 					mesh: Vec::from([
-						0.0, 0.0, -1.0,
-						1.0, 0.0, 0.0,
-						-1.0, 0.0, 0.0,
+                        Vec::from([
+                            Vec3::new(0.0, 0.0, -1.0),
+                            Vec3::new(1.0, 0.5, 0.0),
+                            Vec3::new(-1.0, 0.5, 0.0),
+                        ]),
+                        Vec::from([
+                            Vec3::new(0.0, 0.0, -1.0),
+                            Vec3::new(1.0, -0.5, 0.0),
+                            Vec3::new(-1.0, -0.5, 0.0),
+                        ]),
+                        Vec::from([
+                            Vec3::new(1.0, 0.5, 0.0),
+                            Vec3::new(-1.0, 0.5, 0.0),
+                            Vec3::new(-1.0, -0.5, 0.0),
+                            Vec3::new(1.0, -0.5, 0.0),
+                        ]),
 					]),
 					model: Mat4::IDENTITY,
 					color: 0xffffffff,

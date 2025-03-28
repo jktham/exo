@@ -5,6 +5,12 @@ use glam::{Mat4, Vec3, Vec4};
 use crate::game::{Camera, Object};
 use crate::{WIDTH, HEIGHT};
 
+pub fn draw_polygon_3d(frame: &mut [u8], polygon: &Vec<Vec3>, model: Mat4, camera: &Camera, color: u32) {
+	for i in 0..polygon.len() {
+		draw_line_3d(frame, polygon[i], polygon[(i+1) % polygon.len()], model, model, camera, color);
+	}
+}
+
 pub fn draw_point_3d(frame: &mut [u8], v: Vec3, model: Mat4, camera: &Camera, color: u32) {
 	let p = transform(v, model, camera);
 	draw_pixel(frame, p.x as i32, p.y as i32, color);
@@ -17,13 +23,8 @@ pub fn draw_line_3d(frame: &mut [u8], v0: Vec3, v1: Vec3, model0: Mat4, model1: 
 }
 
 pub fn draw_object(frame: &mut [u8], object: &Object, camera: &Camera) {
-	let mut verts = Vec::<Vec3>::new();
-	for i in 0..object.mesh.len() / 3 {
-		let v = Vec3::new(object.mesh[i*3], object.mesh[i*3+1], object.mesh[i*3+2]);
-		verts.push(v);
-	}
-	for i in 0..verts.len() {
-		draw_line_3d(frame, verts[i], verts[(i+1) % verts.len()], object.model, object.model, camera, object.color);
+	for polygon in &object.mesh {
+		draw_polygon_3d(frame, polygon, object.model, camera, object.color);
 	}
 }
 
