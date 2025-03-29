@@ -4,16 +4,10 @@ use rand_distr::StandardNormal;
 
 use crate::graphics::*;
 
-pub struct Object {
-	pub mesh: Vec<Vec<Vec3>>,
-	pub model: Mat4,
-	pub color: u32,
-}
-
-pub struct Camera {
-    pub position: Vec3,
-    pub direction: Vec3,
-    pub fov: f32,
+pub struct Game {
+    pub ship: Ship,
+    pub camera: Camera,
+    pub stars: Vec<Object>,
 }
 
 pub struct Ship {
@@ -23,10 +17,16 @@ pub struct Ship {
 	pub object: Object,
 }
 
-pub struct Game {
-    pub ship: Ship,
-    pub camera: Camera,
-    pub stars: Vec<Object>,
+pub struct Camera {
+    pub position: Vec3,
+    pub direction: Vec3,
+    pub fov: f32,
+}
+
+pub struct Object {
+	pub mesh: Vec<Vec<Vec3>>,
+	pub model: Mat4,
+	pub color: u32,
 }
 
 impl Game {
@@ -47,7 +47,7 @@ impl Game {
             });
         };
 
-        return Self {
+        Self {
             ship: Ship {
                 position: Vec3::new(0.0, 0.0, 0.0),
                 velocity: Vec3::new(0.0, 0.0, 0.0),
@@ -80,16 +80,15 @@ impl Game {
                 direction: Vec3::new(0.0, 0.0, -1.0),
                 fov: 90.0,
             },
-            stars: stars,
-        };
+            stars,
+        }
     }
 
     pub fn update(&mut self, dt: f32) {
         self.ship.velocity += self.ship.thrust * dt;
         self.ship.position += self.ship.velocity * dt;
-
 		self.ship.object.model = Mat4::from_translation(self.ship.position);
-
+        
 		self.camera.direction = Vec3::normalize(self.ship.position - self.camera.position);
     }
 
