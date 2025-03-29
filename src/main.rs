@@ -11,7 +11,7 @@ use winit::event_loop::EventLoop;
 use winit::keyboard::KeyCode;
 use winit::window::WindowBuilder;
 use winit_input_helper::WinitInputHelper;
-use glam::Vec3;
+use glam::{Quat, Vec3};
 use web_time::{SystemTime, UNIX_EPOCH};
 
 const WIDTH: u32 = 320;
@@ -169,28 +169,49 @@ async fn run() {
                 elwt.exit();
             }
 
-            game.ship.thrust = Vec3::new(0.0, 0.0, 0.0);
+            game.ship.thrusters = Default::default();
             if input.key_held(KeyCode::KeyA) {
-                game.ship.thrust.x -= 10.0;
+                game.ship.thrusters.left = 10.0;
             }
             if input.key_held(KeyCode::KeyD) {
-                game.ship.thrust.x += 10.0;
+                game.ship.thrusters.right = 10.0;
             }
             if input.key_held(KeyCode::KeyR) {
-                game.ship.thrust.y += 10.0;
+                game.ship.thrusters.up = 10.0;
             }
             if input.key_held(KeyCode::KeyF) {
-                game.ship.thrust.y -= 10.0;
+                game.ship.thrusters.down = 10.0;
             }
             if input.key_held(KeyCode::KeyW) {
-                game.ship.thrust.z -= 10.0;
+                game.ship.thrusters.front = 10.0;
             }
             if input.key_held(KeyCode::KeyS) {
-                game.ship.thrust.z += 10.0;
+                game.ship.thrusters.back = 10.0;
+            }
+            if input.key_held(KeyCode::KeyJ) {
+                game.ship.thrusters.yaw_left = 10.0;
+            }
+            if input.key_held(KeyCode::KeyL) {
+                game.ship.thrusters.yaw_right = 10.0;
+            }
+            if input.key_held(KeyCode::KeyI) {
+                game.ship.thrusters.pitch_up = 10.0;
+            }
+            if input.key_held(KeyCode::KeyK) {
+                game.ship.thrusters.pitch_down = 10.0;
+            }
+            if input.key_held(KeyCode::KeyU) {
+                game.ship.thrusters.roll_ccw = 10.0;
+            }
+            if input.key_held(KeyCode::KeyO) {
+                game.ship.thrusters.roll_cw = 10.0;
             }
             if input.key_held(KeyCode::Space) {
-                game.ship.thrust = Vec3::ZERO;
+                game.ship.thrusters = Default::default();
                 game.ship.velocity = Vec3::ZERO;
+                game.ship.acceleration = Vec3::ZERO;
+                game.ship.angular_velocity = Quat::IDENTITY;
+                game.ship.angular_acceleration = Quat::IDENTITY;
             }
         }
     });
