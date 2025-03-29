@@ -22,6 +22,8 @@ mod graphics;
 mod game;
 use game::*;
 
+mod sprites;
+
 fn main() {
     #[cfg(target_arch = "wasm32")]
     {

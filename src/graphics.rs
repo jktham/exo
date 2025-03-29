@@ -117,6 +117,38 @@ pub fn draw_rectangle_fill(frame: &mut [u8], mut x0: i32, mut y0: i32, mut x1: i
 	}
 }
 
+pub fn draw_sprite(frame: &mut [u8], x: i32, y: i32, sprite: &[&[u8]], scale: i32, color: u32) {
+	if scale < 0 { // todo
+		return;
+	}
+	for i in 0..sprite.len() {
+		for j in 0..sprite[i].len() {
+			if sprite[i][j] == 1 {
+				for di in 0..scale {
+					for dj in 0..scale {
+						draw_pixel(frame, x + scale * j as i32 + dj, y + scale * i as i32 + di, color);
+					}
+				}
+			}
+		}
+	}
+}
+
+pub fn draw_text(frame: &mut [u8], x: i32, y: i32, text: &str, font: &[&[&[u8]]], offset: i32, scale: i32, color: u32) {
+	let mut dx = 0;
+	let mut dy = 0;
+	for c in text.as_bytes() {
+		if (*c as usize) < font.len() {
+			draw_sprite(frame, x+dx, y+dy, &font[*c as usize], scale, color);
+			dx += offset * scale;
+			if *c == 10 { // LF
+				dx = 0;
+				dy += offset * scale;
+			}
+		}
+	}
+}
+
 pub fn transform(vertex: Vec3, model: Mat4, camera: &Camera) -> Vec3 {
 	let w = WIDTH as f32;
 	let h = HEIGHT as f32;

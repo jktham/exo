@@ -3,6 +3,7 @@ use rand::Rng;
 use rand_distr::StandardNormal;
 
 use crate::graphics::*;
+use crate::sprites::*;
 
 pub struct Game {
     pub ship: Ship,
@@ -107,5 +108,8 @@ impl Game {
         draw_line(frame, p0.x as i32, p0.y as i32, p1.x as i32, p1.y as i32, 0x0000ffff);
         draw_pixel(frame, p0.x as i32, p0.y as i32, 0x00ff00ff);
 		draw_rectangle_fill(frame, 0, 0, 7, 7, 0xffffffff);
+
+        draw_sprite(frame, 16, 0, &TEST_SPRITE, 2, 0xff00ffff);
+        draw_text(frame, 64, 0, "abcdef\n256", &FONT_5PX, 6, 1, 0xff00ffff);
     }
 }
