@@ -155,10 +155,31 @@ impl Game {
         draw_line_3d(frame, self.ship.position, self.ship.position + Vec3::new(0.0, 1.0, 0.0), Mat4::IDENTITY, Mat4::IDENTITY, &self.camera, 0x00ff00ff);
         draw_line_3d(frame, self.ship.position, self.ship.position + Vec3::new(0.0, 0.0, 1.0), Mat4::IDENTITY, Mat4::IDENTITY, &self.camera, 0x0000ffff);
 
-        draw_sprite(frame, 16, 0, &TEST_SPRITE, 2, 0xff00ffff);
-        draw_text(frame, 48, 6, "abcdef\n256", &FONT_5PX, 6, 1, 0xff00ffff);
-
-        draw_rectangle_fill(frame, 0, 5, 4, 9, if self.ship.thrusters.front > 0.0 {0x0000ffff} else {0xffffffff});
-        draw_rectangle_fill(frame, 0, 0, 4, 4, if self.ship.thrusters.back > 0.0 {0x0000ffff} else {0xffffffff});
+        draw_rectangle_fill(frame, 0, 0, 6, 6, if self.ship.thrusters.left > 0.0 {0xffffffff} else {0x000000ff});
+        draw_text(frame, 1, 1, "A", &FONT_5PX, 6, 1, if self.ship.thrusters.left > 0.0 {0x000000ff} else {0xffffffff});
+        draw_rectangle_fill(frame, 7, 7, 13, 13, if self.ship.thrusters.front > 0.0 {0xffffffff} else {0x000000ff});
+        draw_text(frame, 8, 8, "W", &FONT_5PX, 6, 1, if self.ship.thrusters.front > 0.0 {0x000000ff} else {0xffffffff});
+        draw_rectangle_fill(frame, 7, 0, 13, 6, if self.ship.thrusters.back > 0.0 {0xffffffff} else {0x000000ff});
+        draw_text(frame, 8, 1, "S", &FONT_5PX, 6, 1, if self.ship.thrusters.back > 0.0 {0x000000ff} else {0xffffffff});
+        draw_rectangle_fill(frame, 14, 0, 20, 6, if self.ship.thrusters.right > 0.0 {0xffffffff} else {0x000000ff});
+        draw_text(frame, 15, 1, "D", &FONT_5PX, 6, 1, if self.ship.thrusters.right > 0.0 {0x000000ff} else {0xffffffff});
+        draw_rectangle_fill(frame, 21, 7, 27, 13, if self.ship.thrusters.up > 0.0 {0xffffffff} else {0x000000ff});
+        draw_text(frame, 22, 8, "R", &FONT_5PX, 6, 1, if self.ship.thrusters.up > 0.0 {0x000000ff} else {0xffffffff});
+        draw_rectangle_fill(frame, 21, 0, 27, 6, if self.ship.thrusters.down > 0.0 {0xffffffff} else {0x000000ff});
+        draw_text(frame, 22, 1, "F", &FONT_5PX, 6, 1, if self.ship.thrusters.down > 0.0 {0x000000ff} else {0xffffffff});
+        draw_rectangle_fill(frame, 28, 0, 34, 6, if self.ship.velocity.length() == 0.0 && self.ship.angular_velocity.to_axis_angle().1 == 0.0 {0xffffffff} else {0x000000ff});
+        draw_text(frame, 29, 1, "_", &FONT_5PX, 6, 1, if self.ship.velocity.length() == 0.0 && self.ship.angular_velocity.to_axis_angle().1 == 0.0 {0x000000ff} else {0xffffffff});
+        draw_rectangle_fill(frame, 35, 0, 41, 6, if self.ship.thrusters.yaw_left > 0.0 {0xffffffff} else {0x000000ff});
+        draw_text(frame, 36, 1, "J", &FONT_5PX, 6, 1, if self.ship.thrusters.yaw_left > 0.0 {0x000000ff} else {0xffffffff});
+        draw_rectangle_fill(frame, 42, 7, 48, 13, if self.ship.thrusters.pitch_down > 0.0 {0xffffffff} else {0x000000ff});
+        draw_text(frame, 43, 8, "I", &FONT_5PX, 6, 1, if self.ship.thrusters.pitch_down > 0.0 {0x000000ff} else {0xffffffff});
+        draw_rectangle_fill(frame, 42, 0, 48, 6, if self.ship.thrusters.pitch_up > 0.0 {0xffffffff} else {0x000000ff});
+        draw_text(frame, 43, 1, "K", &FONT_5PX, 6, 1, if self.ship.thrusters.pitch_up > 0.0 {0x000000ff} else {0xffffffff});
+        draw_rectangle_fill(frame, 49, 0, 55, 6, if self.ship.thrusters.yaw_right > 0.0 {0xffffffff} else {0x000000ff});
+        draw_text(frame, 50, 1, "L", &FONT_5PX, 6, 1, if self.ship.thrusters.yaw_right > 0.0 {0x000000ff} else {0xffffffff});
+        draw_rectangle_fill(frame, 35, 7, 41, 13, if self.ship.thrusters.roll_ccw > 0.0 {0xffffffff} else {0x000000ff});
+        draw_text(frame, 36, 8, "U", &FONT_5PX, 6, 1, if self.ship.thrusters.roll_ccw > 0.0 {0x000000ff} else {0xffffffff});
+        draw_rectangle_fill(frame, 49, 7, 55, 13, if self.ship.thrusters.roll_cw > 0.0 {0xffffffff} else {0x000000ff});
+        draw_text(frame, 50, 8, "O", &FONT_5PX, 6, 1, if self.ship.thrusters.roll_cw > 0.0 {0x000000ff} else {0xffffffff});
     }
 }
