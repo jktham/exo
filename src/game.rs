@@ -41,8 +41,10 @@ pub struct Thrusters {
 
 pub struct Camera {
     pub position: Vec3,
-    pub direction: Vec3,
+    pub rotation: Quat,
     pub fov: f32,
+    pub model: Mat4,
+    pub view: Mat4,
 }
 
 pub struct Object {
@@ -71,7 +73,7 @@ impl Game {
 
         Self {
             ship: Ship {
-                position: Vec3::new(0.0, 0.0, 0.0),
+                position: Vec3::new(0.0, 0.0, -1.0),
                 velocity: Vec3::ZERO,
                 acceleration: Vec3::ZERO,
                 rotation: Quat::IDENTITY,
@@ -102,9 +104,11 @@ impl Game {
 				}
             },
             camera: Camera {
-                position: Vec3::new(0.0, 0.0, 1.0),
-                direction: Vec3::new(0.0, 0.0, -1.0),
+                position: Vec3::new(0.0, 0.0, 0.0),
+                rotation: Quat::IDENTITY,
                 fov: 90.0,
+                model: Mat4::IDENTITY,
+                view: Mat4::IDENTITY,
             },
             stars,
         }
@@ -113,7 +117,7 @@ impl Game {
     pub fn update(&mut self, dt: f32) {
         self.ship.angular_acceleration = Quat::from_euler(
             glam::EulerRot::XYZ,
-            (self.ship.thrusters.pitch_down - self.ship.thrusters.pitch_up) * dt*dt, // todo: apply delta properly
+            (self.ship.thrusters.pitch_up - self.ship.thrusters.pitch_down) * dt*dt, // todo: apply delta properly
             (self.ship.thrusters.yaw_left - self.ship.thrusters.yaw_right) * dt*dt,
             (self.ship.thrusters.roll_ccw - self.ship.thrusters.roll_cw) * dt*dt,
         );
@@ -129,7 +133,14 @@ impl Game {
         self.ship.position += self.ship.velocity * dt;
 
 		self.ship.object.model = Mat4::from_rotation_translation(self.ship.rotation, self.ship.position);
-		self.camera.direction = Vec3::normalize(self.ship.position - self.camera.position);
+
+        let position_offset = Vec3::new(0.0, 2.0, 4.0);
+        let rotation_offset = Vec3::new(0.0, 1.0, 0.0);
+        let trailing_factor = 0.9;
+        self.camera.position = self.camera.position * trailing_factor + (self.ship.position + self.ship.rotation * position_offset) * (1.0 - trailing_factor);
+        self.camera.rotation = Quat::look_at_rh(self.camera.position, self.ship.position + self.ship.rotation * rotation_offset, self.ship.rotation * Vec3::new(0.0, 1.0, 0.0)).inverse();
+        self.camera.model = Mat4::from_rotation_translation(self.camera.rotation, self.camera.position);
+        self.camera.view = self.camera.model.inverse();
     }
 
     pub fn draw(&self, frame: &mut [u8]) {
@@ -139,18 +150,15 @@ impl Game {
             draw_object(frame, star, &self.camera);
         }
 		draw_object(frame, &self.ship.object, &self.camera);
-		draw_point_3d(frame, self.ship.position + Vec3::new(0.0, 0.0, -0.5), Mat4::IDENTITY, &self.camera, 0xff00ffff);
 
-        let p0 = transform(self.ship.position, Mat4::IDENTITY, &self.camera);
-        let p1 = transform(self.ship.position + Vec3::new(1.0, -1.0, 0.0), Mat4::IDENTITY, &self.camera);
-        draw_rectangle(frame, p0.x as i32, p0.y as i32, p1.x as i32, p1.y as i32, 0xff0000ff);
-        draw_line(frame, p0.x as i32, p0.y as i32, p1.x as i32, p1.y as i32, 0x0000ffff);
-        draw_pixel(frame, p0.x as i32, p0.y as i32, 0x00ff00ff);
+        draw_line_3d(frame, self.ship.position, self.ship.position + Vec3::new(1.0, 0.0, 0.0), Mat4::IDENTITY, Mat4::IDENTITY, &self.camera, 0xff0000ff);
+        draw_line_3d(frame, self.ship.position, self.ship.position + Vec3::new(0.0, 1.0, 0.0), Mat4::IDENTITY, Mat4::IDENTITY, &self.camera, 0x00ff00ff);
+        draw_line_3d(frame, self.ship.position, self.ship.position + Vec3::new(0.0, 0.0, 1.0), Mat4::IDENTITY, Mat4::IDENTITY, &self.camera, 0x0000ffff);
 
         draw_sprite(frame, 16, 0, &TEST_SPRITE, 2, 0xff00ffff);
-        draw_text(frame, 64, 0, "abcdef\n256", &FONT_5PX, 6, 1, 0xff00ffff);
+        draw_text(frame, 48, 6, "abcdef\n256", &FONT_5PX, 6, 1, 0xff00ffff);
 
-        draw_rectangle_fill(frame, 0, 0, 4, 4, if self.ship.thrusters.front > 0.0 {0x0000ffff} else {0xffffffff});
-        draw_rectangle_fill(frame, 0, 5, 4, 9, if self.ship.thrusters.back > 0.0 {0x0000ffff} else {0xffffffff});
+        draw_rectangle_fill(frame, 0, 5, 4, 9, if self.ship.thrusters.front > 0.0 {0x0000ffff} else {0xffffffff});
+        draw_rectangle_fill(frame, 0, 0, 4, 4, if self.ship.thrusters.back > 0.0 {0x0000ffff} else {0xffffffff});
     }
 }

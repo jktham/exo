@@ -18,7 +18,7 @@ pub fn draw_pixel(frame: &mut [u8], x: i32, y: i32, color: u32) {
 	if x < 0 || x >= WIDTH as i32 || y < 0 || y >= HEIGHT as i32 {
 		return;
 	}
-	let i = ((y * WIDTH as i32 + x) * 4) as usize;
+	let i = (((HEIGHT as i32 - 1 - y) * WIDTH as i32 + x) * 4) as usize;
 	frame[i] = (color >> 24) as u8;
 	frame[i+1] = (color >> 16) as u8;
 	frame[i+2] = (color >> 8) as u8;
@@ -26,6 +26,9 @@ pub fn draw_pixel(frame: &mut [u8], x: i32, y: i32, color: u32) {
 }
 
 pub fn draw_line(frame: &mut [u8], mut x0: i32, mut y0: i32, mut x1: i32, mut y1: i32, color: u32) {
+	if x0 < 0 || x0 >= WIDTH as i32 || x1 < 0 || x1 >= WIDTH as i32 || y0 < 0 || y0 >= HEIGHT as i32 || y1 < 0 || y1 >= HEIGHT as i32 {
+		return;
+	}
 	if i32::abs(y1 - y0) < i32::abs(x1 - x0) {
 		if x0 > x1 {
 			swap(&mut x0, &mut x1);
@@ -123,7 +126,7 @@ pub fn draw_sprite(frame: &mut [u8], x: i32, y: i32, sprite: &[&[u8]], scale: i3
 	}
 	for i in 0..sprite.len() {
 		for j in 0..sprite[i].len() {
-			if sprite[i][j] == 1 {
+			if sprite[sprite.len() - 1 - i][j] == 1 {
 				for di in 0..scale {
 					for dj in 0..scale {
 						draw_pixel(frame, x + scale * j as i32 + dj, y + scale * i as i32 + di, color);
@@ -143,7 +146,7 @@ pub fn draw_text(frame: &mut [u8], x: i32, y: i32, text: &str, font: &[&[&[u8]]]
 			dx += offset * scale;
 			if *c == 10 { // LF
 				dx = 0;
-				dy += offset * scale;
+				dy -= offset * scale;
 			}
 		}
 	}
@@ -153,12 +156,11 @@ pub fn transform(vertex: Vec3, model: Mat4, camera: &Camera) -> Vec3 {
 	let w = WIDTH as f32;
 	let h = HEIGHT as f32;
 	let n = 0.1;
-	let f = 1000.0;
+	let f = 10000.0;
 	let phi = camera.fov / 180.0 * f32::consts::PI;
 	let r = f32::tan(phi/2.0) * n;
 	let t = r * h/w;
 
-	let view = Mat4::look_at_lh(camera.position, camera.position + camera.direction, Vec3::new(0.0, 1.0, 0.0));
 	let projection = Mat4::from_cols_array(&[
 		n/r, 0.0, 0.0, 0.0,
 		0.0, n/t, 0.0, 0.0,
@@ -167,10 +169,14 @@ pub fn transform(vertex: Vec3, model: Mat4, camera: &Camera) -> Vec3 {
 	]).transpose();
 
 	let world = model * Vec4::new(vertex.x, vertex.y, vertex.z, 1.0);
-	let eye = view * world;
+	let eye = camera.view * world;
 	let clip = projection * eye;
 	let ndc = Vec3::new(clip.x/clip.w, clip.y/clip.w, clip.z/clip.w);
-	let mut screen = Vec3::new(w/2.0 * ndc.x + w/2.0, h/2.0 * ndc.y + h/2.0, (f-n)/2.0 * ndc.z + (f+n)/2.0);
+	let mut screen = Vec3::new(
+		w/2.0 * ndc.x + w/2.0, 
+		h/2.0 * ndc.y + h/2.0, 
+		(f-n)/2.0 * ndc.z + (f+n)/2.0
+	);
 	screen.z /= f;
 
 	screen
@@ -178,7 +184,7 @@ pub fn transform(vertex: Vec3, model: Mat4, camera: &Camera) -> Vec3 {
 
 pub fn draw_point_3d(frame: &mut [u8], v: Vec3, model: Mat4, camera: &Camera, color: u32) {
 	let p = transform(v, model, camera);
-	if p.z < 1.0 {
+	if p.z > 1.0 {
 		return;
 	}
 	draw_pixel(frame, p.x as i32, p.y as i32, color);
@@ -187,7 +193,7 @@ pub fn draw_point_3d(frame: &mut [u8], v: Vec3, model: Mat4, camera: &Camera, co
 pub fn draw_line_3d(frame: &mut [u8], v0: Vec3, v1: Vec3, model0: Mat4, model1: Mat4, camera: &Camera, color: u32) {
 	let p0 = transform(v0, model0, camera);
 	let p1 = transform(v1, model1, camera);
-	if p0.z < 1.0 || p1.z < 1.0 {
+	if p0.z > 1.0 || p1.z > 1.0 {
 		return;
 	}
 	draw_line(frame, p0.x as i32, p0.y as i32, p1.x as i32, p1.y as i32, color);

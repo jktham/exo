@@ -195,10 +195,10 @@ async fn run() {
                 game.ship.thrusters.yaw_right = 10.0;
             }
             if input.key_held(KeyCode::KeyI) {
-                game.ship.thrusters.pitch_up = 10.0;
+                game.ship.thrusters.pitch_down = 10.0;
             }
             if input.key_held(KeyCode::KeyK) {
-                game.ship.thrusters.pitch_down = 10.0;
+                game.ship.thrusters.pitch_up = 10.0;
             }
             if input.key_held(KeyCode::KeyU) {
                 game.ship.thrusters.roll_ccw = 10.0;
