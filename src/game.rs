@@ -21,7 +21,7 @@ pub struct Ship {
     pub angular_velocity: Quat,
     pub angular_acceleration: Quat,
     pub thrusters: Thrusters,
-	pub object: Object,
+    pub object: Object,
 }
 
 #[derive(Default)]
@@ -50,9 +50,9 @@ pub struct Camera {
 
 #[derive(Clone)]
 pub struct Object {
-	pub mesh: Vec<Vec<Vec3>>,
-	pub model: Mat4,
-	pub color: u32,
+    pub mesh: Vec<Vec<Vec3>>,
+    pub model: Mat4,
+    pub color: u32,
 }
 
 impl Game {
@@ -66,8 +66,8 @@ impl Game {
                 angular_velocity: Quat::IDENTITY,
                 angular_acceleration: Quat::IDENTITY,
                 thrusters: Default::default(),
-				object: Object {
-					mesh: Vec::from([
+                object: Object {
+                    mesh: Vec::from([
                         Vec::from([
                             Vec3::new(0.0, 0.0, -1.0),
                             Vec3::new(1.0, 0.5, 0.0),
@@ -84,10 +84,10 @@ impl Game {
                             Vec3::new(-1.0, -0.5, 0.0),
                             Vec3::new(1.0, -0.5, 0.0),
                         ]),
-					]),
-					model: Mat4::IDENTITY,
-					color: 0xffffffff,
-				}
+                    ]),
+                    model: Mat4::IDENTITY,
+                    color: 0xffffffff,
+                }
             },
             camera: Camera {
                 position: Vec3::ZERO,
@@ -119,7 +119,7 @@ impl Game {
         self.ship.velocity += self.ship.acceleration * dt;
         self.ship.position += self.ship.velocity * dt;
 
-		self.ship.object.model = Mat4::from_rotation_translation(self.ship.rotation, self.ship.position);
+        self.ship.object.model = Mat4::from_rotation_translation(self.ship.rotation, self.ship.position);
 
         let position_offset = Vec3::new(0.0, 2.0, 4.0);
         let rotation_offset = Vec3::new(0.0, 1.0, 0.0);
@@ -144,7 +144,7 @@ impl Game {
         for dust in &self.dust {
             draw_object(frame, dust, &self.camera);
         }
-		draw_object(frame, &self.ship.object, &self.camera);
+        draw_object(frame, &self.ship.object, &self.camera);
 
         draw_line_3d(frame, self.ship.position, self.ship.position + Vec3::new(1.0, 0.0, 0.0), Mat4::IDENTITY, Mat4::IDENTITY, &self.camera, 0xff0000ff);
         draw_line_3d(frame, self.ship.position, self.ship.position + Vec3::new(0.0, 1.0, 0.0), Mat4::IDENTITY, Mat4::IDENTITY, &self.camera, 0x00ff00ff);
