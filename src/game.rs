@@ -10,6 +10,7 @@ pub struct Game {
     pub ship: Ship,
     pub camera: Camera,
     pub stars: Vec<Object>,
+    pub dust: Vec<Object>,
 }
 
 pub struct Ship {
@@ -47,6 +48,7 @@ pub struct Camera {
     pub view: Mat4,
 }
 
+#[derive(Clone)]
 pub struct Object {
 	pub mesh: Vec<Vec<Vec3>>,
 	pub model: Mat4,
@@ -55,25 +57,9 @@ pub struct Object {
 
 impl Game {
     pub fn new() -> Self {
-        let mut stars = Vec::new();
-        for _ in 0..1000 {
-            let pos = Vec3::new(
-                rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
-                rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
-                rand::rng().sample::<f32, StandardNormal>(StandardNormal),
-            ).normalize() * 1000.0;
-            let b = (rand::rng().random::<f32>() * 255.0) as u32 & 0xff;
-            let col = (b << 24) | (b << 16) | (b << 8) | 0xff;
-            stars.push(Object {
-                mesh: Vec::from([Vec::from([pos])]),
-                model: Mat4::IDENTITY,
-                color: col,
-            });
-        };
-
         Self {
             ship: Ship {
-                position: Vec3::new(0.0, 0.0, -1.0),
+                position: Vec3::ZERO,
                 velocity: Vec3::ZERO,
                 acceleration: Vec3::ZERO,
                 rotation: Quat::IDENTITY,
@@ -104,13 +90,14 @@ impl Game {
 				}
             },
             camera: Camera {
-                position: Vec3::new(0.0, 0.0, 0.0),
+                position: Vec3::ZERO,
                 rotation: Quat::IDENTITY,
                 fov: 90.0,
                 model: Mat4::IDENTITY,
                 view: Mat4::IDENTITY,
             },
-            stars,
+            stars: generate_stars(),
+            dust: update_dust(Vec::new(), Vec3::ZERO, true),
         }
     }
 
@@ -141,6 +128,11 @@ impl Game {
         self.camera.rotation = Quat::look_at_rh(self.camera.position, self.ship.position + self.ship.rotation * rotation_offset, self.ship.rotation * Vec3::new(0.0, 1.0, 0.0)).inverse();
         self.camera.model = Mat4::from_rotation_translation(self.camera.rotation, self.camera.position);
         self.camera.view = self.camera.model.inverse();
+
+        for star in &mut self.stars {
+            star.model = Mat4::from_translation(self.camera.position);
+        }
+        self.dust = update_dust(self.dust.clone(), self.camera.position, false);
     }
 
     pub fn draw(&self, frame: &mut [u8]) {
@@ -148,6 +140,9 @@ impl Game {
 
         for star in &self.stars {
             draw_object(frame, star, &self.camera);
+        }
+        for dust in &self.dust {
+            draw_object(frame, dust, &self.camera);
         }
 		draw_object(frame, &self.ship.object, &self.camera);
 
@@ -182,4 +177,51 @@ impl Game {
         draw_rectangle_fill(frame, 49, 7, 55, 13, if self.ship.thrusters.roll_cw > 0.0 {0xffffffff} else {0x000000ff});
         draw_text(frame, 50, 8, "O", &FONT_5PX, 6, 1, if self.ship.thrusters.roll_cw > 0.0 {0x000000ff} else {0xffffffff});
     }
+}
+
+pub fn generate_stars() -> Vec<Object> {
+    const COUNT: usize = 1000;
+
+    let mut stars = Vec::new();
+    for _ in 0..COUNT {
+        let pos = Vec3::new(
+            rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
+            rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
+            rand::rng().sample::<f32, StandardNormal>(StandardNormal),
+        ).normalize() * 1000.0;
+        let b = (rand::rng().random::<f32>() * 255.0) as u32 & 0xff;
+        let col = (b << 24) | (b << 16) | (b << 8) | 0xff;
+        stars.push(Object {
+            mesh: Vec::from([Vec::from([pos])]),
+            model: Mat4::IDENTITY,
+            color: col,
+        });
+    }
+    stars
+}
+
+pub fn update_dust(mut dust: Vec<Object>, center: Vec3, first: bool) -> Vec<Object> {
+    const COUNT: usize = 200;
+    const MIN_DIST: f32 = 70.0;
+    const MAX_DIST: f32 = 80.0;
+
+    dust = dust.iter().filter(|d| (d.mesh[0][0] - center).length() <= MAX_DIST).cloned().collect();
+    while dust.len() < COUNT {
+        let pos = Vec3::new(
+            rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
+            rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
+            rand::rng().sample::<f32, StandardNormal>(StandardNormal),
+        ).normalize() * rand::rng().random_range(if first {0.0} else {MIN_DIST.powf(3.0)}..=MAX_DIST.powf(3.0)).powf(1.0/3.0);
+        dust.push(Object {
+            mesh: Vec::from([Vec::from([center + pos])]),
+            model: Mat4::IDENTITY,
+            color: 0xffffffff,
+        });
+    }
+    for d in &mut dust {
+        let brightness = f32::max(0.0, 1.0 - (d.mesh[0][0] - center).length() / MIN_DIST);
+        d.color = float_to_color(brightness, brightness, brightness, 1.0);
+    }
+
+    dust
 }

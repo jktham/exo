@@ -216,3 +216,20 @@ pub fn draw_object(frame: &mut [u8], object: &Object, camera: &Camera) {
 		draw_polygon_3d(frame, polygon, object.model, camera, object.color);
 	}
 }
+
+pub fn color_to_float(color: u32) -> (f32, f32, f32, f32) {
+	let r = ((color >> 24) as u8) as f32 / 255.0;
+	let g = ((color >> 16) as u8) as f32 / 255.0;
+	let b = ((color >> 8) as u8) as f32 / 255.0;
+	let a = ((color) as u8) as f32 / 255.0;
+	(r, g, b, a)
+}
+
+pub fn float_to_color(r: f32, g: f32, b: f32, a: f32) -> u32 {
+	let mut color = 0x00000000;
+	color |= ((r * 255.0) as u32) << 24;
+	color |= ((g * 255.0) as u32) << 16;
+	color |= ((b * 255.0) as u32) << 8;
+	color |= (a * 255.0) as u32;
+	color
+}
