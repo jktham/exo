@@ -1,0 +1,6 @@
+name: exo
+services:
+  web:
+    build: .
+    ports:
+        - 3000:8000
