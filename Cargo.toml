@@ -8,6 +8,7 @@ optimize = ["log/release_max_level_warn"]
 default = ["optimize"]
 
 [dependencies]
+enum-map = "2.7.3"
 error-iter = "0.4"
 glam = "0.30.1"
 log = "0.4"

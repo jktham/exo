@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub const TEST_SPRITE: &[&[u8]] = &[
     &[1, 0, 1, 0, 0, 1, 0, 1],
     &[1, 0, 1, 0, 1, 1, 0, 1],

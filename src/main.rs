@@ -1,7 +1,7 @@
 #![deny(clippy::all)]
 #![forbid(unsafe_code)]
-#![allow(dead_code)]
 
+use enum_map::enum_map;
 use error_iter::ErrorIter as _;
 use log::error;
 use pixels::{PixelsBuilder, SurfaceTexture};
@@ -170,45 +170,45 @@ async fn run() {
                 elwt.exit();
             }
 
-            game.ship.thrusters = Default::default();
+            game.ship.thrust = enum_map! {_ => 0.0};
             if input.key_held(KeyCode::KeyA) {
-                game.ship.thrusters.left = 10.0;
+                game.ship.thrust[Thrust::Left] = 10.0;
             }
             if input.key_held(KeyCode::KeyD) {
-                game.ship.thrusters.right = 10.0;
+                game.ship.thrust[Thrust::Right] = 10.0;
             }
             if input.key_held(KeyCode::KeyR) {
-                game.ship.thrusters.up = 10.0;
+                game.ship.thrust[Thrust::Up] = 10.0;
             }
             if input.key_held(KeyCode::KeyF) {
-                game.ship.thrusters.down = 10.0;
+                game.ship.thrust[Thrust::Down] = 10.0;
             }
             if input.key_held(KeyCode::KeyW) {
-                game.ship.thrusters.front = 10.0;
+                game.ship.thrust[Thrust::Front] = 10.0;
             }
             if input.key_held(KeyCode::KeyS) {
-                game.ship.thrusters.back = 10.0;
+                game.ship.thrust[Thrust::Back] = 10.0;
             }
             if input.key_held(KeyCode::KeyJ) {
-                game.ship.thrusters.yaw_left = 10.0;
+                game.ship.thrust[Thrust::YawLeft] = 10.0;
             }
             if input.key_held(KeyCode::KeyL) {
-                game.ship.thrusters.yaw_right = 10.0;
+                game.ship.thrust[Thrust::YawRight] = 10.0;
             }
             if input.key_held(KeyCode::KeyI) {
-                game.ship.thrusters.pitch_down = 10.0;
+                game.ship.thrust[Thrust::PitchDown] = 10.0;
             }
             if input.key_held(KeyCode::KeyK) {
-                game.ship.thrusters.pitch_up = 10.0;
+                game.ship.thrust[Thrust::PitchUp] = 10.0;
             }
             if input.key_held(KeyCode::KeyU) {
-                game.ship.thrusters.roll_ccw = 10.0;
+                game.ship.thrust[Thrust::RollCCW] = 10.0;
             }
             if input.key_held(KeyCode::KeyO) {
-                game.ship.thrusters.roll_cw = 10.0;
+                game.ship.thrust[Thrust::RollCW] = 10.0;
             }
             if input.key_held(KeyCode::Space) {
-                game.ship.thrusters = Default::default();
+                game.ship.thrust = enum_map! {_ => 0.0};
                 game.ship.velocity = Vec3::ZERO;
                 game.ship.acceleration = Vec3::ZERO;
                 game.ship.angular_velocity = Quat::IDENTITY;
