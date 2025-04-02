@@ -22,9 +22,9 @@ mod graphics;
 mod game;
 mod sprites;
 mod meshes;
+mod transform;
 
 use game::*;
-
 fn main() {
     #[cfg(target_arch = "wasm32")]
     {

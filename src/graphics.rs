@@ -1,9 +1,10 @@
 use core::f32;
 use std::cmp::{max, min};
 use std::mem::swap;
-use glam::{Mat4, Vec3, Vec4};
+use glam::Vec3;
 
 use crate::game::{Camera, Object};
+use crate::transform::{transform_mesh, transform_world_to_screen};
 use crate::{WIDTH, HEIGHT};
 
 pub fn clear(frame: &mut [u8], color: u32) {
@@ -152,69 +153,43 @@ pub fn draw_text(frame: &mut [u8], x: i32, y: i32, text: &str, font: &[&[&[u8]]]
     }
 }
 
-pub fn transform(vertex: Vec3, model: Mat4, camera: &Camera) -> Vec3 {
-    let w = WIDTH as f32;
-    let h = HEIGHT as f32;
-    let n = 0.1;
-    let f = 10000.0;
-    let phi = camera.fov / 180.0 * f32::consts::PI;
-    let r = f32::tan(phi/2.0) * n;
-    let t = r * h/w;
-
-    let projection = Mat4::from_cols_array(&[
-        n/r, 0.0, 0.0, 0.0,
-        0.0, n/t, 0.0, 0.0,
-        0.0, 0.0, -(f+n)/(f-n), -2.0*f*n/(f-n),
-        0.0, 0.0, -1.0, 0.0,
-    ]).transpose();
-
-    let world = model * Vec4::new(vertex.x, vertex.y, vertex.z, 1.0);
-    let eye = camera.view * world;
-    let clip = projection * eye;
-    let ndc = Vec3::new(clip.x/clip.w, clip.y/clip.w, clip.z/clip.w);
-    let mut screen = Vec3::new(
-        w/2.0 * ndc.x + w/2.0, 
-        h/2.0 * ndc.y + h/2.0, 
-        (f-n)/2.0 * ndc.z + (f+n)/2.0
-    );
-    screen.z /= f;
-
-    screen
-}
-
-pub fn draw_point_3d(frame: &mut [u8], v: Vec3, model: Mat4, camera: &Camera, color: u32) {
-    let p = transform(v, model, camera);
+pub fn draw_point_3d(frame: &mut [u8], v: Vec3, camera: &Camera, color: u32) {
+    let p = transform_world_to_screen(v, camera);
     if p.z > 1.0 {
         return;
     }
     draw_pixel(frame, p.x as i32, p.y as i32, color);
 }
 
-pub fn draw_line_3d(frame: &mut [u8], v0: Vec3, v1: Vec3, model0: Mat4, model1: Mat4, camera: &Camera, color: u32) {
-    let p0 = transform(v0, model0, camera);
-    let p1 = transform(v1, model1, camera);
+pub fn draw_line_3d(frame: &mut [u8], v0: Vec3, v1: Vec3, camera: &Camera, color: u32) {
+    let p0 = transform_world_to_screen(v0, camera);
+    let p1 = transform_world_to_screen(v1, camera);
     if p0.z > 1.0 || p1.z > 1.0 {
         return;
     }
     draw_line(frame, p0.x as i32, p0.y as i32, p1.x as i32, p1.y as i32, color);
 }
 
-pub fn draw_polygon_3d(frame: &mut [u8], polygon: &[Vec3], model: Mat4, camera: &Camera, color: u32) {
+pub fn draw_polygon_3d(frame: &mut [u8], polygon: &Vec<Vec3>, camera: &Camera, color: u32) {
     if polygon.len() == 1 {
-        draw_point_3d(frame, polygon[0], model, camera, color);
+        draw_point_3d(frame, polygon[0], camera, color);
     } else if polygon.len() == 2 {
-        draw_line_3d(frame, polygon[0], polygon[1], model, model, camera, color);
+        draw_line_3d(frame, polygon[0], polygon[1], camera, color);
     } else if !polygon.is_empty() {
         for i in 0..polygon.len() {
-            draw_line_3d(frame, polygon[i], polygon[(i+1) % polygon.len()], model, model, camera, color);
+            draw_line_3d(frame, polygon[i], polygon[(i+1) % polygon.len()], camera, color);
         }
     }
 }
 
-pub fn draw_object(frame: &mut [u8], object: &Object, camera: &Camera) {
-    for polygon in &object.mesh {
-        draw_polygon_3d(frame, polygon, object.model, camera, object.color);
+pub fn draw_mesh_3d(frame: &mut [u8], mesh: &Vec<Vec<Vec3>>, camera: &Camera, color: u32) {
+    for polygon in mesh {
+        draw_polygon_3d(frame, polygon, camera, color);
     }
+}
+
+pub fn draw_object(frame: &mut [u8], object: &Object, camera: &Camera) {
+    draw_mesh_3d(frame, &transform_mesh(&object.mesh, object.model), camera, object.color);
 }
 
 pub fn color_to_float(color: u32) -> (f32, f32, f32, f32) {

@@ -143,9 +143,9 @@ impl Game {
             }
         }
 
-        draw_line_3d(frame, self.ship.position, self.ship.position + Vec3::new(1.0, 0.0, 0.0), Mat4::IDENTITY, Mat4::IDENTITY, &self.camera, 0xff0000ff);
-        draw_line_3d(frame, self.ship.position, self.ship.position + Vec3::new(0.0, 1.0, 0.0), Mat4::IDENTITY, Mat4::IDENTITY, &self.camera, 0x00ff00ff);
-        draw_line_3d(frame, self.ship.position, self.ship.position + Vec3::new(0.0, 0.0, 1.0), Mat4::IDENTITY, Mat4::IDENTITY, &self.camera, 0x0000ffff);
+        draw_line_3d(frame, self.ship.position, self.ship.position + Vec3::new(1.0, 0.0, 0.0), &self.camera, 0xff0000ff);
+        draw_line_3d(frame, self.ship.position, self.ship.position + Vec3::new(0.0, 1.0, 0.0), &self.camera, 0x00ff00ff);
+        draw_line_3d(frame, self.ship.position, self.ship.position + Vec3::new(0.0, 0.0, 1.0), &self.camera, 0x0000ffff);
 
         self.draw_hud(frame);
     }
