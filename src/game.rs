@@ -6,6 +6,7 @@ use rand_distr::StandardNormal;
 
 use crate::graphics::*;
 use crate::sprites::*;
+use crate::meshes::*;
 
 pub struct Game {
     pub ship: Ship,
@@ -68,7 +69,11 @@ impl Game {
                 angular_velocity: Quat::IDENTITY,
                 angular_acceleration: Quat::IDENTITY,
                 thrust: enum_map! {_ => 0.0},
-                hull: create_hull(),
+                hull: Object {
+                    mesh: hull_mesh(),
+                    model: Mat4::IDENTITY,
+                    color: 0xffffffff,
+                },
                 thrusters: create_thrusters(),
             },
             camera: Camera {
@@ -103,9 +108,9 @@ impl Game {
 
         self.ship.hull.model = Mat4::from_rotation_translation(self.ship.rotation, self.ship.position);
 
-        let position_offset = Vec3::new(0.0, 2.0, 4.0);
-        let rotation_offset = Vec3::new(0.0, 1.0, 0.0);
-        let trailing_factor = 0.9;
+        let position_offset = Vec3::new(0.0, 4.0, 10.0);
+        let rotation_offset = Vec3::new(0.0, 0.0, 0.0);
+        let trailing_factor = 0.85;
         self.camera.position = self.camera.position * trailing_factor + (self.ship.position + self.ship.rotation * position_offset) * (1.0 - trailing_factor);
         self.camera.rotation = Quat::look_at_rh(self.camera.position, self.ship.position + self.ship.rotation * rotation_offset, self.ship.rotation * Vec3::new(0.0, 1.0, 0.0)).inverse();
         self.camera.model = Mat4::from_rotation_translation(self.camera.rotation, self.camera.position);
@@ -147,33 +152,19 @@ impl Game {
 
     pub fn draw_hud(&self, frame: &mut [u8]) {
         for (thrust, t) in self.ship.thrust {
-            let (x0, y0, x1, y1) = match thrust {
-                Thrust::Left => (0, 0, 6, 6),
-                Thrust::Right => (14, 0, 20, 6),
-                Thrust::Up => (21, 7, 27, 13),
-                Thrust::Down => (21, 0, 27, 6),
-                Thrust::Front => (7, 7, 13, 13),
-                Thrust::Back => (7, 0, 13, 6),
-                Thrust::YawLeft => (35, 0, 41, 6),
-                Thrust::YawRight => (49, 0, 55, 6),
-                Thrust::PitchUp => (42, 0, 48, 6),
-                Thrust::PitchDown => (42, 7, 48, 13),
-                Thrust::RollCCW => (35, 7, 41, 13),
-                Thrust::RollCW => (49, 7, 55, 13),
-            };
-            let key = match thrust {
-                Thrust::Left => "A",
-                Thrust::Right => "D",
-                Thrust::Up => "R",
-                Thrust::Down => "F",
-                Thrust::Front => "W",
-                Thrust::Back => "S",
-                Thrust::YawLeft => "J",
-                Thrust::YawRight => "L",
-                Thrust::PitchUp => "K",
-                Thrust::PitchDown => "I",
-                Thrust::RollCCW => "U",
-                Thrust::RollCW => "O",
+            let (x0, y0, x1, y1, key) = match thrust {
+                Thrust::Left => (0, 0, 6, 6, "A"),
+                Thrust::Right => (14, 0, 20, 6, "D"),
+                Thrust::Up => (21, 7, 27, 13, "R"),
+                Thrust::Down => (21, 0, 27, 6, "F"),
+                Thrust::Front => (7, 7, 13, 13, "W"),
+                Thrust::Back => (7, 0, 13, 6, "S"),
+                Thrust::YawLeft => (35, 0, 41, 6, "J"),
+                Thrust::YawRight => (49, 0, 55, 6, "L"),
+                Thrust::PitchUp => (42, 0, 48, 6, "K"),
+                Thrust::PitchDown => (42, 7, 48, 13, "I"),
+                Thrust::RollCCW => (35, 7, 41, 13, "U"),
+                Thrust::RollCW => (49, 7, 55, 13, "O"),
             };
             let bg: u32 = if t > 0.0 {0xffffffff} else {0x00000000};
             let fg: u32 = if t > 0.0 {0x00000000} else {0xffffffff};
@@ -232,175 +223,16 @@ pub fn update_dust(mut dust: Vec<Object>, center: Vec3, first: bool) -> Vec<Obje
     dust
 }
 
-pub fn create_hull() -> Object {
-    Object {
-        mesh: vec![
-            vec![
-                Vec3::new(0.0, 0.0, -1.0),
-                Vec3::new(1.0, 0.5, 0.0),
-                Vec3::new(-1.0, 0.5, 0.0),
-            ],
-            vec![
-                Vec3::new(0.0, 0.0, -1.0),
-                Vec3::new(1.0, -0.5, 0.0),
-                Vec3::new(-1.0, -0.5, 0.0),
-            ],
-            vec![
-                Vec3::new(1.0, 0.5, 0.0),
-                Vec3::new(-1.0, 0.5, 0.0),
-                Vec3::new(-1.0, -0.5, 0.0),
-                Vec3::new(1.0, -0.5, 0.0),
-            ],
-        ],
-        model: Mat4::IDENTITY,
-        color: 0xffffffff,
-    }
-}
-
 pub fn create_thrusters() -> EnumMap<Thrust, Object> {
-    let color = 0x0000ffff;
+    let color = 0xff00ffff;
     let thrusters = enum_map! {
-        Thrust::Left => Object {
-            mesh: vec![
-                vec![
-                    Vec3::new(1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, -0.5, 0.0),
-                    Vec3::new(1.0, -0.5, 0.0),
-                ],
-            ],
-            model: Mat4::IDENTITY,
-            color: color,
-        },
-        Thrust::Right => Object {
-            mesh: vec![
-                vec![
-                    Vec3::new(1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, -0.5, 0.0),
-                    Vec3::new(1.0, -0.5, 0.0),
-                ],
-            ],
-            model: Mat4::IDENTITY,
-            color: color,
-        },
-        Thrust::Up => Object {
-            mesh: vec![
-                vec![
-                    Vec3::new(1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, -0.5, 0.0),
-                    Vec3::new(1.0, -0.5, 0.0),
-                ],
-            ],
-            model: Mat4::IDENTITY,
-            color: color,
-        },
-        Thrust::Down => Object {
-            mesh: vec![
-                vec![
-                    Vec3::new(1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, -0.5, 0.0),
-                    Vec3::new(1.0, -0.5, 0.0),
-                ],
-            ],
-            model: Mat4::IDENTITY,
-            color: color,
-        },
         Thrust::Front => Object {
-            mesh: vec![
-                vec![
-                    Vec3::new(1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, -0.5, 0.0),
-                    Vec3::new(1.0, -0.5, 0.0),
-                ],
-            ],
+            mesh: front_thruster_mesh(),
             model: Mat4::IDENTITY,
             color: color,
         },
-        Thrust::Back => Object {
-            mesh: vec![
-                vec![
-                    Vec3::new(1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, -0.5, 0.0),
-                    Vec3::new(1.0, -0.5, 0.0),
-                ],
-            ],
-            model: Mat4::IDENTITY,
-            color: color,
-        },
-        Thrust::YawLeft => Object {
-            mesh: vec![
-                vec![
-                    Vec3::new(1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, -0.5, 0.0),
-                    Vec3::new(1.0, -0.5, 0.0),
-                ],
-            ],
-            model: Mat4::IDENTITY,
-            color: color,
-        },
-        Thrust::YawRight => Object {
-            mesh: vec![
-                vec![
-                    Vec3::new(1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, -0.5, 0.0),
-                    Vec3::new(1.0, -0.5, 0.0),
-                ],
-            ],
-            model: Mat4::IDENTITY,
-            color: color,
-        },
-        Thrust::PitchUp => Object {
-            mesh: vec![
-                vec![
-                    Vec3::new(1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, -0.5, 0.0),
-                    Vec3::new(1.0, -0.5, 0.0),
-                ],
-            ],
-            model: Mat4::IDENTITY,
-            color: color,
-        },
-        Thrust::PitchDown => Object {
-            mesh: vec![
-                vec![
-                    Vec3::new(1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, -0.5, 0.0),
-                    Vec3::new(1.0, -0.5, 0.0),
-                ],
-            ],
-            model: Mat4::IDENTITY,
-            color: color,
-        },
-        Thrust::RollCCW => Object {
-            mesh: vec![
-                vec![
-                    Vec3::new(1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, -0.5, 0.0),
-                    Vec3::new(1.0, -0.5, 0.0),
-                ],
-            ],
-            model: Mat4::IDENTITY,
-            color: color,
-        },
-        Thrust::RollCW => Object {
-            mesh: vec![
-                vec![
-                    Vec3::new(1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, -0.5, 0.0),
-                    Vec3::new(1.0, -0.5, 0.0),
-                ],
-            ],
+        _ => Object {
+            mesh: vec![],
             model: Mat4::IDENTITY,
             color: color,
         },

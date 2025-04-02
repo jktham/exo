@@ -19,11 +19,11 @@ const WIDTH: u32 = 320;
 const HEIGHT: u32 = 240;
 
 mod graphics;
-
 mod game;
-use game::*;
-
 mod sprites;
+mod meshes;
+
+use game::*;
 
 fn main() {
     #[cfg(target_arch = "wasm32")]
@@ -172,40 +172,40 @@ async fn run() {
 
             game.ship.thrust = enum_map! {_ => 0.0};
             if input.key_held(KeyCode::KeyA) {
-                game.ship.thrust[Thrust::Left] = 10.0;
+                game.ship.thrust[Thrust::Left] = 20.0;
             }
             if input.key_held(KeyCode::KeyD) {
-                game.ship.thrust[Thrust::Right] = 10.0;
+                game.ship.thrust[Thrust::Right] = 20.0;
             }
             if input.key_held(KeyCode::KeyR) {
-                game.ship.thrust[Thrust::Up] = 10.0;
+                game.ship.thrust[Thrust::Up] = 20.0;
             }
             if input.key_held(KeyCode::KeyF) {
-                game.ship.thrust[Thrust::Down] = 10.0;
+                game.ship.thrust[Thrust::Down] = 20.0;
             }
             if input.key_held(KeyCode::KeyW) {
-                game.ship.thrust[Thrust::Front] = 10.0;
+                game.ship.thrust[Thrust::Front] = 40.0;
             }
             if input.key_held(KeyCode::KeyS) {
-                game.ship.thrust[Thrust::Back] = 10.0;
+                game.ship.thrust[Thrust::Back] = 20.0;
             }
             if input.key_held(KeyCode::KeyJ) {
-                game.ship.thrust[Thrust::YawLeft] = 10.0;
+                game.ship.thrust[Thrust::YawLeft] = 5.0;
             }
             if input.key_held(KeyCode::KeyL) {
-                game.ship.thrust[Thrust::YawRight] = 10.0;
+                game.ship.thrust[Thrust::YawRight] = 5.0;
             }
             if input.key_held(KeyCode::KeyI) {
-                game.ship.thrust[Thrust::PitchDown] = 10.0;
+                game.ship.thrust[Thrust::PitchDown] = 5.0;
             }
             if input.key_held(KeyCode::KeyK) {
-                game.ship.thrust[Thrust::PitchUp] = 10.0;
+                game.ship.thrust[Thrust::PitchUp] = 5.0;
             }
             if input.key_held(KeyCode::KeyU) {
-                game.ship.thrust[Thrust::RollCCW] = 10.0;
+                game.ship.thrust[Thrust::RollCCW] = 5.0;
             }
             if input.key_held(KeyCode::KeyO) {
-                game.ship.thrust[Thrust::RollCW] = 10.0;
+                game.ship.thrust[Thrust::RollCW] = 5.0;
             }
             if input.key_held(KeyCode::Space) {
                 game.ship.thrust = enum_map! {_ => 0.0};
