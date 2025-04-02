@@ -13,6 +13,7 @@ pub struct Game {
     pub camera: Camera,
     pub stars: Vec<Object>,
     pub dust: Vec<Object>,
+    pub particles: Vec<Particle>,
 }
 
 pub struct Ship {
@@ -58,6 +59,11 @@ pub struct Object {
     pub color: u32,
 }
 
+pub struct Particle {
+    pub object: Object,
+    pub lifetime: f32,
+}
+
 impl Game {
     pub fn new() -> Self {
         Self {
@@ -85,6 +91,7 @@ impl Game {
             },
             stars: generate_stars(),
             dust: update_dust(Vec::new(), Vec3::ZERO, true),
+            particles: Vec::new(),
         }
     }
 
@@ -121,6 +128,38 @@ impl Game {
         }
         self.dust = update_dust(self.dust.clone(), self.camera.position, false);
 
+        for particle in &mut self.particles {
+            particle.lifetime -= dt;
+            if particle.lifetime < 1.0 {
+                let (r, g, b, a) = color_to_float(0xff00ffff);
+                let brightness = f32::max(0.0, particle.lifetime);
+                particle.object.color = float_to_color(brightness*r, brightness*g, brightness*b, a);
+            }
+        }
+        self.particles.retain(|p| p.lifetime > 0.0);
+
+        let particle_offset = Vec3::new(
+            rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
+            rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
+            rand::rng().sample::<f32, StandardNormal>(StandardNormal),
+        ).normalize() * 0.5;
+        self.particles.push(Particle {
+            object: Object {
+                mesh: vec![vec![self.ship.position + particle_offset + self.ship.rotation * Vec3::new(-2.3, 0.0, 3.0)]],
+                model: Mat4::IDENTITY,
+                color: 0xff00ffff,
+            },
+            lifetime: 10.0, 
+        });
+        self.particles.push(Particle {
+            object: Object {
+                mesh: vec![vec![self.ship.position + particle_offset + self.ship.rotation * Vec3::new(2.3, 0.0, 3.0)]],
+                model: Mat4::IDENTITY,
+                color: 0xff00ffff,
+            },
+            lifetime: 10.0, 
+        });
+
         for (_thrust, thruster) in &mut self.ship.thrusters {
             thruster.model = self.ship.hull.model;
         }
@@ -134,6 +173,9 @@ impl Game {
         }
         for dust in &self.dust {
             draw_object(frame, dust, &self.camera);
+        }
+        for particle in &self.particles {
+            draw_object(frame, &particle.object, &self.camera);
         }
 
         draw_object(frame, &self.ship.hull, &self.camera);
@@ -189,7 +231,7 @@ pub fn generate_stars() -> Vec<Object> {
         let b = (rand::rng().random::<f32>() * 255.0) as u32 & 0xff;
         let col = (b << 24) | (b << 16) | (b << 8) | 0xff;
         stars.push(Object {
-            mesh: Vec::from([Vec::from([pos])]),
+            mesh: vec![vec![pos]],
             model: Mat4::IDENTITY,
             color: col,
         });
@@ -210,7 +252,7 @@ pub fn update_dust(mut dust: Vec<Object>, center: Vec3, first: bool) -> Vec<Obje
             rand::rng().sample::<f32, StandardNormal>(StandardNormal),
         ).normalize() * rand::rng().random_range(if first {0.0} else {MIN_DIST.powf(3.0)}..=MAX_DIST.powf(3.0)).powf(1.0/3.0);
         dust.push(Object {
-            mesh: Vec::from([Vec::from([center + pos])]),
+            mesh: vec![vec![center + pos]],
             model: Mat4::IDENTITY,
             color: 0xffffffff,
         });
