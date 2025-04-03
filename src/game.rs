@@ -4,7 +4,7 @@ use glam::{Mat4, Vec3};
 use rand::Rng;
 use rand_distr::StandardNormal;
 
-use crate::graphics::*;
+use crate::{graphics::*, HEIGHT};
 use crate::sprites::*;
 use crate::meshes::*;
 
@@ -165,7 +165,7 @@ impl Game {
         }
     }
 
-    pub fn draw(&self, frame: &mut [u8]) {
+    pub fn draw(&self, frame: &mut [u8], dt: f32) {
         clear(frame, 0x000000ff);
 
         for star in &self.stars {
@@ -189,10 +189,10 @@ impl Game {
         draw_line_3d(frame, self.ship.position, self.ship.position + Vec3::new(0.0, 1.0, 0.0), &self.camera, 0x00ff00ff);
         draw_line_3d(frame, self.ship.position, self.ship.position + Vec3::new(0.0, 0.0, 1.0), &self.camera, 0x0000ffff);
 
-        self.draw_hud(frame);
+        self.draw_hud(frame, dt);
     }
 
-    pub fn draw_hud(&self, frame: &mut [u8]) {
+    pub fn draw_hud(&self, frame: &mut [u8], dt: f32) {
         for (thrust, t) in self.ship.thrust {
             let (x0, y0, x1, y1, key) = match thrust {
                 Thrust::Left => (0, 0, 6, 6, "A"),
@@ -215,6 +215,8 @@ impl Game {
         }
         draw_rectangle_fill(frame, 28, 0, 34, 6, if self.ship.velocity.length() == 0.0 && self.ship.angular_velocity.to_axis_angle().1 == 0.0 {0xffffffff} else {0x000000ff});
         draw_text(frame, 29, 1, "_", &FONT_5PX, 6, 1, if self.ship.velocity.length() == 0.0 && self.ship.angular_velocity.to_axis_angle().1 == 0.0 {0x000000ff} else {0xffffffff});
+    
+        draw_text(frame, 1, (HEIGHT - 6) as i32, &(f32::round(dt * 1000.0) / 1000.0).to_string(), &FONT_5PX, 6, 1, 0xffffffff);
     }
 }
 

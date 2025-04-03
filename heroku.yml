@@ -2,4 +2,4 @@ build:
   docker:
     web: Dockerfile
 run:
-  web: WASM_SERVER_RUNNER_ADDRESS=0.0.0.0:$PORT wasm-server-runner ./deploy/exo.wasm
+  web: WASM_SERVER_RUNNER_ADDRESS=0.0.0.0:$PORT WASM_SERVER_RUNNER_CUSTOM_INDEX_HTML=./deploy/index.html wasm-server-runner ./deploy/exo.wasm

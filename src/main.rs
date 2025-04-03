@@ -76,7 +76,9 @@ async fn run() {
             .and_then(|win| win.document())
             .and_then(|doc| doc.body())
             .and_then(|body| {
-                body.append_child(&web_sys::Element::from(window.canvas().unwrap()))
+                let canvas_element = web_sys::Element::from(window.canvas().unwrap());
+                canvas_element.set_id("canvas");
+                body.append_child(&canvas_element)
                     .ok()
             })
             .expect("couldn't append canvas to document body");
@@ -118,6 +120,7 @@ async fn run() {
             builder
                 .texture_format(texture_format)
                 .surface_texture_format(texture_format)
+                // .present_mode(PresentMode::AutoVsync)
         };
 
         builder.build_async().await.expect("Pixels error")
@@ -140,7 +143,7 @@ async fn run() {
                 dt = (SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64() - t) as f32;
                 t = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64();
 
-                game.draw(pixels.frame_mut());
+                game.draw(pixels.frame_mut(), dt);
                 if let Err(err) = pixels.render() {
                     log_error("pixels.render", err);
                     elwt.exit();
