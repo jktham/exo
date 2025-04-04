@@ -4,7 +4,7 @@ use glam::{Mat4, Vec3};
 use rand::Rng;
 use rand_distr::StandardNormal;
 
-use crate::{graphics::*, HEIGHT};
+use crate::{graphics::*, HEIGHT, WIDTH};
 use crate::sprites::*;
 use crate::meshes::*;
 
@@ -24,6 +24,8 @@ pub struct Ship {
     pub angular_velocity: Quat,
     pub angular_acceleration: Quat,
     pub thrust: EnumMap<Thrust, f32>,
+    pub boost: f32,
+    pub brake: bool,
     pub hull: Object,
     pub thrusters: EnumMap<Thrust, Object>,
 }
@@ -75,6 +77,8 @@ impl Game {
                 angular_velocity: Quat::IDENTITY,
                 angular_acceleration: Quat::IDENTITY,
                 thrust: enum_map! {_ => 0.0},
+                boost: 0.0,
+                brake: false,
                 hull: Object {
                     mesh: hull_mesh(),
                     model: Mat4::IDENTITY,
@@ -96,6 +100,23 @@ impl Game {
     }
 
     pub fn update(&mut self, dt: f32) {
+        if self.ship.brake {
+            let angular_brake_thrust = Vec3::from(self.ship.angular_velocity.inverse().to_euler(glam::EulerRot::XYZ)) * 200.0;
+            self.ship.thrust[Thrust::PitchUp] = f32::clamp(angular_brake_thrust.x, 0.0, 5.0);
+            self.ship.thrust[Thrust::PitchDown] = f32::clamp(-angular_brake_thrust.x, 0.0, 5.0);
+            self.ship.thrust[Thrust::YawLeft] = f32::clamp(angular_brake_thrust.y, 0.0, 5.0);
+            self.ship.thrust[Thrust::YawRight] = f32::clamp(-angular_brake_thrust.y, 0.0, 5.0);
+            self.ship.thrust[Thrust::RollCCW] = f32::clamp(angular_brake_thrust.z, 0.0, 5.0);
+            self.ship.thrust[Thrust::RollCW] = f32::clamp(-angular_brake_thrust.z, 0.0, 5.0);
+
+            let brake_thrust = self.ship.rotation.inverse() * self.ship.velocity * 10.0;
+            self.ship.thrust[Thrust::Right] = f32::clamp(-brake_thrust.x, 0.0, 20.0);
+            self.ship.thrust[Thrust::Left] = f32::clamp(brake_thrust.x, 0.0, 20.0);
+            self.ship.thrust[Thrust::Up] = f32::clamp(-brake_thrust.y, 0.0, 20.0);
+            self.ship.thrust[Thrust::Down] = f32::clamp(brake_thrust.y, 0.0, 20.0);
+            self.ship.thrust[Thrust::Back] = f32::clamp(-brake_thrust.z, 0.0, 20.0);
+            self.ship.thrust[Thrust::Front] = f32::clamp(brake_thrust.z, 0.0, 40.0);
+        }
         self.ship.angular_acceleration = Quat::from_euler(
             glam::EulerRot::XYZ,
             (self.ship.thrust[Thrust::PitchUp] - self.ship.thrust[Thrust::PitchDown]) * dt*dt, // todo: apply delta properly
@@ -105,6 +126,9 @@ impl Game {
         self.ship.angular_velocity *= self.ship.angular_acceleration;
         self.ship.rotation *= self.ship.angular_velocity;
 
+        self.ship.thrust[Thrust::Front] += self.ship.boost;
+        self.ship.boost = f32::max(0.0, self.ship.boost - 800.0 * dt);
+        
         self.ship.acceleration = self.ship.rotation * Vec3::new(
             self.ship.thrust[Thrust::Right] - self.ship.thrust[Thrust::Left],
             self.ship.thrust[Thrust::Up] - self.ship.thrust[Thrust::Down],
@@ -180,7 +204,7 @@ impl Game {
 
         draw_object(frame, &self.ship.hull, &self.camera);
         for (thrust, thruster) in &self.ship.thrusters {
-            if self.ship.thrust[thrust] > 0.0 {
+            if self.ship.thrust[thrust] > 0.01 {
                 draw_object(frame, thruster, &self.camera);
             }
         }
@@ -195,28 +219,36 @@ impl Game {
     pub fn draw_hud(&self, frame: &mut [u8], dt: f32) {
         for (thrust, t) in self.ship.thrust {
             let (x0, y0, x1, y1, key) = match thrust {
-                Thrust::Left => (0, 0, 6, 6, "A"),
-                Thrust::Right => (14, 0, 20, 6, "D"),
-                Thrust::Up => (21, 7, 27, 13, "R"),
-                Thrust::Down => (21, 0, 27, 6, "F"),
-                Thrust::Front => (7, 7, 13, 13, "W"),
-                Thrust::Back => (7, 0, 13, 6, "S"),
-                Thrust::YawLeft => (35, 0, 41, 6, "J"),
-                Thrust::YawRight => (49, 0, 55, 6, "L"),
-                Thrust::PitchUp => (42, 0, 48, 6, "K"),
-                Thrust::PitchDown => (42, 7, 48, 13, "I"),
-                Thrust::RollCCW => (35, 7, 41, 13, "U"),
-                Thrust::RollCW => (49, 7, 55, 13, "O"),
+                Thrust::Left => (0, 7, 6, 13, "A"),
+                Thrust::Right => (14, 7, 20, 13, "D"),
+                Thrust::Up => (21, 14, 27, 20, "R"),
+                Thrust::Down => (21, 7, 27, 13, "F"),
+                Thrust::Front => (7, 14, 13, 20, "W"),
+                Thrust::Back => (7, 7, 13, 13, "S"),
+                Thrust::YawLeft => (35, 7, 41, 13, "J"),
+                Thrust::YawRight => (49, 7, 55, 13, "L"),
+                Thrust::PitchUp => (42, 7, 48, 13, "K"),
+                Thrust::PitchDown => (42, 14, 48, 20, "I"),
+                Thrust::RollCCW => (35, 14, 41, 20, "U"),
+                Thrust::RollCW => (49, 14, 55, 20, "O"),
             };
-            let bg: u32 = if t > 0.0 {0xffffffff} else {0x00000000};
-            let fg: u32 = if t > 0.0 {0x00000000} else {0xffffffff};
+            let bg: u32 = if t > 0.01 {0xffffffff} else {0x00000000};
+            let fg: u32 = if t > 0.01 {0x00000000} else {0xffffffff};
             draw_rectangle_fill(frame, x0, y0, x1, y1, bg);
             draw_text(frame, x0 + 1, y0 + 1, key, &FONT_5PX, 6, 1, fg);
         }
-        draw_rectangle_fill(frame, 28, 0, 34, 6, if self.ship.velocity.length() == 0.0 && self.ship.angular_velocity.to_axis_angle().1 == 0.0 {0xffffffff} else {0x000000ff});
-        draw_text(frame, 29, 1, "_", &FONT_5PX, 6, 1, if self.ship.velocity.length() == 0.0 && self.ship.angular_velocity.to_axis_angle().1 == 0.0 {0x000000ff} else {0xffffffff});
+        draw_rectangle_fill(frame, 21, 0, 55, 6, if self.ship.brake {0xffffffff} else {0x000000ff});
+        draw_text(frame, 22, 1, "SPACE", &FONT_5PX, 7, 1, if self.ship.brake {0x000000ff} else {0xffffffff});
+
+        draw_rectangle_fill(frame, 0, 0, 20, 6, if self.ship.boost > 0.0 {0xffffffff} else {0x000000ff});
+        draw_text(frame, 1, 1, "TAB", &FONT_5PX, 7, 1, if self.ship.boost > 0.0 {0x000000ff} else {0xffffffff});
     
         draw_text(frame, 1, (HEIGHT - 6) as i32, &(f32::round(dt * 1000.0) / 1000.0).to_string(), &FONT_5PX, 6, 1, 0xffffffff);
+
+        let velocity = format!("{:.3} m/s  ", f32::round(self.ship.velocity.length() * 1000.0) / 1000.0);
+        let acceleration = format!("{:.3} m/s^2", f32::round(self.ship.acceleration.length() * 1000.0) / 1000.0);
+        draw_text(frame, WIDTH as i32 - (velocity.len() * 6) as i32, 8 as i32, &velocity, &FONT_5PX, 6, 1, 0xffffffff);
+        draw_text(frame, WIDTH as i32 - (acceleration.len() * 6) as i32, 1 as i32, &acceleration, &FONT_5PX, 6, 1, 0xffffffff);
     }
 }
 

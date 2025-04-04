@@ -211,11 +211,12 @@ async fn run() {
                 game.ship.thrust[Thrust::RollCW] = 5.0;
             }
             if input.key_held(KeyCode::Space) {
-                game.ship.thrust = enum_map! {_ => 0.0};
-                game.ship.velocity = Vec3::ZERO;
-                game.ship.acceleration = Vec3::ZERO;
-                game.ship.angular_velocity = Quat::IDENTITY;
-                game.ship.angular_acceleration = Quat::IDENTITY;
+                game.ship.brake = true;
+            } else {
+                game.ship.brake = false;
+            }
+            if input.key_pressed(KeyCode::Tab) {
+                game.ship.boost = 400.0;
             }
         }
     });
