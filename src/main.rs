@@ -12,7 +12,6 @@ use winit::event_loop::EventLoop;
 use winit::keyboard::KeyCode;
 use winit::window::WindowBuilder;
 use winit_input_helper::WinitInputHelper;
-use glam::{Quat, Vec3};
 use web_time::{SystemTime, UNIX_EPOCH};
 
 const WIDTH: u32 = 320;

@@ -94,63 +94,19 @@ impl Game {
                 view: Mat4::IDENTITY,
             },
             stars: generate_stars(),
-            dust: update_dust(Vec::new(), Vec3::ZERO, true),
+            dust: generate_dust(),
             particles: Vec::new(),
         }
     }
 
     pub fn update(&mut self, dt: f32) {
-        if self.ship.brake {
-            let angular_brake_thrust = Vec3::from(self.ship.angular_velocity.inverse().to_euler(glam::EulerRot::XYZ)) * 200.0;
-            self.ship.thrust[Thrust::PitchUp] = f32::clamp(angular_brake_thrust.x, 0.0, 5.0);
-            self.ship.thrust[Thrust::PitchDown] = f32::clamp(-angular_brake_thrust.x, 0.0, 5.0);
-            self.ship.thrust[Thrust::YawLeft] = f32::clamp(angular_brake_thrust.y, 0.0, 5.0);
-            self.ship.thrust[Thrust::YawRight] = f32::clamp(-angular_brake_thrust.y, 0.0, 5.0);
-            self.ship.thrust[Thrust::RollCCW] = f32::clamp(angular_brake_thrust.z, 0.0, 5.0);
-            self.ship.thrust[Thrust::RollCW] = f32::clamp(-angular_brake_thrust.z, 0.0, 5.0);
-
-            let brake_thrust = self.ship.rotation.inverse() * self.ship.velocity * 10.0;
-            self.ship.thrust[Thrust::Right] = f32::clamp(-brake_thrust.x, 0.0, 20.0);
-            self.ship.thrust[Thrust::Left] = f32::clamp(brake_thrust.x, 0.0, 20.0);
-            self.ship.thrust[Thrust::Up] = f32::clamp(-brake_thrust.y, 0.0, 20.0);
-            self.ship.thrust[Thrust::Down] = f32::clamp(brake_thrust.y, 0.0, 20.0);
-            self.ship.thrust[Thrust::Back] = f32::clamp(-brake_thrust.z, 0.0, 20.0);
-            self.ship.thrust[Thrust::Front] = f32::clamp(brake_thrust.z, 0.0, 40.0);
-        }
-        self.ship.angular_acceleration = Quat::from_euler(
-            glam::EulerRot::XYZ,
-            (self.ship.thrust[Thrust::PitchUp] - self.ship.thrust[Thrust::PitchDown]) * dt*dt, // todo: apply delta properly
-            (self.ship.thrust[Thrust::YawLeft] - self.ship.thrust[Thrust::YawRight]) * dt*dt,
-            (self.ship.thrust[Thrust::RollCCW] - self.ship.thrust[Thrust::RollCW]) * dt*dt,
-        );
-        self.ship.angular_velocity *= self.ship.angular_acceleration;
-        self.ship.rotation *= self.ship.angular_velocity;
-
-        self.ship.thrust[Thrust::Front] += self.ship.boost;
-        self.ship.boost = f32::max(0.0, self.ship.boost - 800.0 * dt);
-        
-        self.ship.acceleration = self.ship.rotation * Vec3::new(
-            self.ship.thrust[Thrust::Right] - self.ship.thrust[Thrust::Left],
-            self.ship.thrust[Thrust::Up] - self.ship.thrust[Thrust::Down],
-            self.ship.thrust[Thrust::Back] - self.ship.thrust[Thrust::Front],
-        );
-        self.ship.velocity += self.ship.acceleration * dt;
-        self.ship.position += self.ship.velocity * dt;
-
-        self.ship.hull.model = Mat4::from_rotation_translation(self.ship.rotation, self.ship.position);
-
-        let position_offset = Vec3::new(0.0, 4.0, 10.0);
-        let rotation_offset = Vec3::new(0.0, 0.0, 0.0);
-        let trailing_factor = 0.85;
-        self.camera.position = self.camera.position * trailing_factor + (self.ship.position + self.ship.rotation * position_offset) * (1.0 - trailing_factor);
-        self.camera.rotation = Quat::look_at_rh(self.camera.position, self.ship.position + self.ship.rotation * rotation_offset, self.ship.rotation * Vec3::new(0.0, 1.0, 0.0)).inverse();
-        self.camera.model = Mat4::from_rotation_translation(self.camera.rotation, self.camera.position);
-        self.camera.view = self.camera.model.inverse();
+        update_ship_movement(&mut self.ship, dt);
+        update_camera_position(&mut self.camera, &self.ship);
 
         for star in &mut self.stars {
             star.model = Mat4::from_translation(self.camera.position);
         }
-        self.dust = update_dust(self.dust.clone(), self.camera.position, false);
+        update_dust(&mut self.dust, self.camera.position, false);
 
         for particle in &mut self.particles {
             particle.lifetime -= dt;
@@ -162,27 +118,7 @@ impl Game {
         }
         self.particles.retain(|p| p.lifetime > 0.0);
 
-        let particle_offset = Vec3::new(
-            rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
-            rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
-            rand::rng().sample::<f32, StandardNormal>(StandardNormal),
-        ).normalize() * 0.5;
-        self.particles.push(Particle {
-            object: Object {
-                mesh: vec![vec![self.ship.position + particle_offset + self.ship.rotation * Vec3::new(-2.3, 0.0, 3.0)]],
-                model: Mat4::IDENTITY,
-                color: 0xff00ffff,
-            },
-            lifetime: 10.0, 
-        });
-        self.particles.push(Particle {
-            object: Object {
-                mesh: vec![vec![self.ship.position + particle_offset + self.ship.rotation * Vec3::new(2.3, 0.0, 3.0)]],
-                model: Mat4::IDENTITY,
-                color: 0xff00ffff,
-            },
-            lifetime: 10.0, 
-        });
+        add_exhaust_particles(&mut self.particles, &self.ship, dt);
 
         for (_thrust, thruster) in &mut self.ship.thrusters {
             thruster.model = self.ship.hull.model;
@@ -273,12 +209,12 @@ pub fn generate_stars() -> Vec<Object> {
     stars
 }
 
-pub fn update_dust(mut dust: Vec<Object>, center: Vec3, first: bool) -> Vec<Object> {
+pub fn update_dust(dust: &mut Vec<Object>, center: Vec3, first: bool) {
     const COUNT: usize = 200;
     const MIN_DIST: f32 = 70.0;
     const MAX_DIST: f32 = 80.0;
 
-    dust = dust.iter().filter(|d| (d.mesh[0][0] - center).length() <= MAX_DIST).cloned().collect();
+    dust.retain(|d| (d.mesh[0][0] - center).length() <= MAX_DIST);
     while dust.len() < COUNT {
         let pos = Vec3::new(
             rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
@@ -291,11 +227,15 @@ pub fn update_dust(mut dust: Vec<Object>, center: Vec3, first: bool) -> Vec<Obje
             color: 0xffffffff,
         });
     }
-    for d in &mut dust {
+    for d in dust {
         let brightness = f32::max(0.0, 1.0 - (d.mesh[0][0] - center).length() / MIN_DIST);
         d.color = float_to_color(brightness, brightness, brightness, 1.0);
     }
+}
 
+pub fn generate_dust() -> Vec<Object> {
+    let mut dust = Vec::new();
+    update_dust(&mut dust, Vec3::ZERO, true);
     dust
 }
 
@@ -314,4 +254,88 @@ pub fn create_thrusters() -> EnumMap<Thrust, Object> {
         },
     };
     thrusters
+}
+
+pub fn update_ship_movement(ship: &mut Ship, dt: f32) {
+    if ship.brake {
+        let angular_brake_thrust = Vec3::from(ship.angular_velocity.inverse().to_euler(glam::EulerRot::XYZ)) * 200.0;
+        ship.thrust[Thrust::PitchUp] = f32::clamp(angular_brake_thrust.x, 0.0, 5.0);
+        ship.thrust[Thrust::PitchDown] = f32::clamp(-angular_brake_thrust.x, 0.0, 5.0);
+        ship.thrust[Thrust::YawLeft] = f32::clamp(angular_brake_thrust.y, 0.0, 5.0);
+        ship.thrust[Thrust::YawRight] = f32::clamp(-angular_brake_thrust.y, 0.0, 5.0);
+        ship.thrust[Thrust::RollCCW] = f32::clamp(angular_brake_thrust.z, 0.0, 5.0);
+        ship.thrust[Thrust::RollCW] = f32::clamp(-angular_brake_thrust.z, 0.0, 5.0);
+
+        let brake_thrust = ship.rotation.inverse() * ship.velocity * 10.0;
+        ship.thrust[Thrust::Right] = f32::clamp(-brake_thrust.x, 0.0, 20.0);
+        ship.thrust[Thrust::Left] = f32::clamp(brake_thrust.x, 0.0, 20.0);
+        ship.thrust[Thrust::Up] = f32::clamp(-brake_thrust.y, 0.0, 20.0);
+        ship.thrust[Thrust::Down] = f32::clamp(brake_thrust.y, 0.0, 20.0);
+        ship.thrust[Thrust::Back] = f32::clamp(-brake_thrust.z, 0.0, 20.0);
+        ship.thrust[Thrust::Front] = f32::clamp(brake_thrust.z, 0.0, 40.0);
+    }
+
+    ship.angular_acceleration = Quat::from_euler(
+        glam::EulerRot::XYZ,
+        (ship.thrust[Thrust::PitchUp] - ship.thrust[Thrust::PitchDown]) * dt*dt, // todo: apply delta properly
+        (ship.thrust[Thrust::YawLeft] - ship.thrust[Thrust::YawRight]) * dt*dt,
+        (ship.thrust[Thrust::RollCCW] - ship.thrust[Thrust::RollCW]) * dt*dt,
+    );
+    ship.angular_velocity *= ship.angular_acceleration;
+    ship.rotation *= ship.angular_velocity;
+
+    ship.thrust[Thrust::Front] += ship.boost;
+    ship.boost = f32::max(0.0, ship.boost - 800.0 * dt);
+    
+    ship.acceleration = ship.rotation * Vec3::new(
+        ship.thrust[Thrust::Right] - ship.thrust[Thrust::Left],
+        ship.thrust[Thrust::Up] - ship.thrust[Thrust::Down],
+        ship.thrust[Thrust::Back] - ship.thrust[Thrust::Front],
+    );
+    ship.velocity += ship.acceleration * dt;
+    ship.position += ship.velocity * dt;
+
+    ship.hull.model = Mat4::from_rotation_translation(ship.rotation, ship.position);
+}
+
+pub fn update_camera_position(camera: &mut Camera, ship: &Ship) {
+    let position_offset = Vec3::new(0.0, 4.0, 10.0);
+    let rotation_offset = Vec3::new(0.0, 0.0, 0.0);
+    let trailing_factor = 0.85;
+    camera.position = camera.position * trailing_factor + (ship.position + ship.rotation * position_offset) * (1.0 - trailing_factor);
+    camera.rotation = Quat::look_at_rh(camera.position, ship.position + ship.rotation * rotation_offset, ship.rotation * Vec3::new(0.0, 1.0, 0.0)).inverse();
+    camera.model = Mat4::from_rotation_translation(camera.rotation, camera.position);
+    camera.view = camera.model.inverse();
+}
+
+pub fn add_exhaust_particles(particles: &mut Vec<Particle>, ship: &Ship, dt: f32) {
+    let acceleration_factor = f32::clamp(ship.acceleration.length() / 100.0, 0.0, 1.0);
+    let velocity_factor = f32::clamp(ship.velocity.length() / 200.0, 0.1, 1.0);
+    let particle_strength = (acceleration_factor * 2.0 + velocity_factor) / 3.0;
+
+    let thruster_positions = vec![
+        Vec3::new(-2.3, 0.0, 3.0),
+        Vec3::new(2.3, 0.0, 3.0)
+    ];
+
+    for _ in 0..5 {
+        let particle_offset = Vec3::new(
+            rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
+            rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
+            rand::rng().sample::<f32, StandardNormal>(StandardNormal),
+        ).normalize() * 0.5;
+
+        for pos in &thruster_positions {
+            if rand::random::<f32>() < particle_strength {
+                particles.push(Particle {
+                    object: Object {
+                        mesh: vec![vec![ship.position + particle_offset + ship.rotation * *pos - ship.velocity * dt * rand::random::<f32>()]],
+                        model: Mat4::IDENTITY,
+                        color: 0xff00ffff,
+                    },
+                    lifetime: 10.0, 
+                });
+            }
+        }
+    }
 }
