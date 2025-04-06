@@ -259,20 +259,20 @@ pub fn create_thrusters() -> EnumMap<Thrust, Object> {
 pub fn update_ship_movement(ship: &mut Ship, dt: f32) {
     if ship.brake {
         let angular_brake_thrust = Vec3::from(ship.angular_velocity.inverse().to_euler(glam::EulerRot::XYZ)) * 200.0;
-        ship.thrust[Thrust::PitchUp] = f32::clamp(angular_brake_thrust.x, 0.0, 5.0);
-        ship.thrust[Thrust::PitchDown] = f32::clamp(-angular_brake_thrust.x, 0.0, 5.0);
-        ship.thrust[Thrust::YawLeft] = f32::clamp(angular_brake_thrust.y, 0.0, 5.0);
-        ship.thrust[Thrust::YawRight] = f32::clamp(-angular_brake_thrust.y, 0.0, 5.0);
-        ship.thrust[Thrust::RollCCW] = f32::clamp(angular_brake_thrust.z, 0.0, 5.0);
-        ship.thrust[Thrust::RollCW] = f32::clamp(-angular_brake_thrust.z, 0.0, 5.0);
+        if ship.thrust[Thrust::PitchUp] == 0.0 && ship.thrust[Thrust::PitchDown] == 0.0 {ship.thrust[Thrust::PitchUp] = f32::clamp(angular_brake_thrust.x, 0.0, 5.0);}
+        if ship.thrust[Thrust::PitchUp] == 0.0 && ship.thrust[Thrust::PitchDown] == 0.0 {ship.thrust[Thrust::PitchDown] = f32::clamp(-angular_brake_thrust.x, 0.0, 5.0);}
+        if ship.thrust[Thrust::YawLeft] == 0.0 && ship.thrust[Thrust::YawRight] == 0.0 {ship.thrust[Thrust::YawLeft] = f32::clamp(angular_brake_thrust.y, 0.0, 5.0);}
+        if ship.thrust[Thrust::YawLeft] == 0.0 && ship.thrust[Thrust::YawRight] == 0.0 {ship.thrust[Thrust::YawRight] = f32::clamp(-angular_brake_thrust.y, 0.0, 5.0);}
+        if ship.thrust[Thrust::RollCCW] == 0.0 && ship.thrust[Thrust::RollCW] == 0.0 {ship.thrust[Thrust::RollCCW] = f32::clamp(angular_brake_thrust.z, 0.0, 5.0);}
+        if ship.thrust[Thrust::RollCCW] == 0.0 && ship.thrust[Thrust::RollCW] == 0.0 {ship.thrust[Thrust::RollCW] = f32::clamp(-angular_brake_thrust.z, 0.0, 5.0);}
 
         let brake_thrust = ship.rotation.inverse() * ship.velocity * 10.0;
-        ship.thrust[Thrust::Right] = f32::clamp(-brake_thrust.x, 0.0, 20.0);
-        ship.thrust[Thrust::Left] = f32::clamp(brake_thrust.x, 0.0, 20.0);
-        ship.thrust[Thrust::Up] = f32::clamp(-brake_thrust.y, 0.0, 20.0);
-        ship.thrust[Thrust::Down] = f32::clamp(brake_thrust.y, 0.0, 20.0);
-        ship.thrust[Thrust::Back] = f32::clamp(-brake_thrust.z, 0.0, 20.0);
-        ship.thrust[Thrust::Front] = f32::clamp(brake_thrust.z, 0.0, 40.0);
+        if ship.thrust[Thrust::Right] == 0.0 && ship.thrust[Thrust::Left] == 0.0 {ship.thrust[Thrust::Right] = f32::clamp(-brake_thrust.x, 0.0, 20.0);}
+        if ship.thrust[Thrust::Right] == 0.0 && ship.thrust[Thrust::Left] == 0.0 {ship.thrust[Thrust::Left] = f32::clamp(brake_thrust.x, 0.0, 20.0);}
+        if ship.thrust[Thrust::Up] == 0.0 && ship.thrust[Thrust::Down] == 0.0 {ship.thrust[Thrust::Up] = f32::clamp(-brake_thrust.y, 0.0, 20.0);}
+        if ship.thrust[Thrust::Up] == 0.0 && ship.thrust[Thrust::Down] == 0.0 {ship.thrust[Thrust::Down] = f32::clamp(brake_thrust.y, 0.0, 20.0);}
+        if ship.thrust[Thrust::Back] == 0.0 && ship.thrust[Thrust::Front] == 0.0 {ship.thrust[Thrust::Back] = f32::clamp(-brake_thrust.z, 0.0, 20.0);}
+        if ship.thrust[Thrust::Back] == 0.0 && ship.thrust[Thrust::Front] == 0.0 {ship.thrust[Thrust::Front] = f32::clamp(brake_thrust.z, 0.0, 40.0);}
     }
 
     ship.angular_acceleration = Quat::from_euler(
