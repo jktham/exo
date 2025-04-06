@@ -59,6 +59,7 @@ pub struct Object {
     pub mesh: Vec<Vec<Vec3>>,
     pub model: Mat4,
     pub color: u32,
+    pub fill: u32,
 }
 
 pub struct Particle {
@@ -83,6 +84,7 @@ impl Game {
                     mesh: hull_mesh(),
                     model: Mat4::IDENTITY,
                     color: 0xffffffff,
+                    fill: 0x000000ff,
                 },
                 thrusters: create_thrusters(),
             },
@@ -204,6 +206,7 @@ pub fn generate_stars() -> Vec<Object> {
             mesh: vec![vec![pos]],
             model: Mat4::IDENTITY,
             color: col,
+            fill: 0x00000000,
         });
     }
     stars
@@ -225,6 +228,7 @@ pub fn update_dust(dust: &mut Vec<Object>, center: Vec3, first: bool) {
             mesh: vec![vec![center + pos]],
             model: Mat4::IDENTITY,
             color: 0xffffffff,
+            fill: 0x00000000,
         });
     }
     for d in dust {
@@ -246,11 +250,13 @@ pub fn create_thrusters() -> EnumMap<Thrust, Object> {
             mesh: front_thruster_mesh(),
             model: Mat4::IDENTITY,
             color: color,
+            fill: 0x00000000,
         },
         _ => Object {
             mesh: vec![],
             model: Mat4::IDENTITY,
             color: color,
+            fill: 0x00000000,
         },
     };
     thrusters
@@ -332,6 +338,7 @@ pub fn add_exhaust_particles(particles: &mut Vec<Particle>, ship: &Ship, dt: f32
                         mesh: vec![vec![ship.position + particle_offset + ship.rotation * *pos - ship.velocity * dt * rand::random::<f32>()]],
                         model: Mat4::IDENTITY,
                         color: 0xff00ffff,
+                        fill: 0x00000000,
                     },
                     lifetime: 10.0, 
                 });
