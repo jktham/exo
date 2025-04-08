@@ -126,6 +126,8 @@ async fn run() {
     };
     let mut game = Game::new();
 
+    let mut depth_buffer: [f32; (WIDTH*HEIGHT) as usize] = [10000.0; (WIDTH*HEIGHT) as usize];
+
     let mut t = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64();
     let mut dt = 0.0;
 
@@ -142,7 +144,7 @@ async fn run() {
                 dt = (SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64() - t) as f32;
                 t = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64();
 
-                game.draw(pixels.frame_mut(), dt);
+                game.draw(pixels.frame_mut(), &mut depth_buffer, dt);
                 if let Err(err) = pixels.render() {
                     log_error("pixels.render", err);
                     elwt.exit();

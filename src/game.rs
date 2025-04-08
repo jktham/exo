@@ -127,34 +127,34 @@ impl Game {
         }
     }
 
-    pub fn draw(&self, frame: &mut [u8], dt: f32) {
-        clear(frame, 0x000000ff);
+    pub fn draw(&self, frame: &mut [u8], depth: &mut [f32], dt: f32) {
+        clear(frame, depth, 0x000000ff);
 
         for star in &self.stars {
-            draw_object(frame, star, &self.camera);
+            draw_object(frame, depth, star, &self.camera);
         }
         for dust in &self.dust {
-            draw_object(frame, dust, &self.camera);
+            draw_object(frame, depth, dust, &self.camera);
         }
         for particle in &self.particles {
-            draw_object(frame, &particle.object, &self.camera);
+            draw_object(frame, depth, &particle.object, &self.camera);
         }
 
-        draw_object(frame, &self.ship.hull, &self.camera);
+        draw_object(frame, depth, &self.ship.hull, &self.camera);
         for (thrust, thruster) in &self.ship.thrusters {
             if self.ship.thrust[thrust] > 0.01 {
-                draw_object(frame, thruster, &self.camera);
+                draw_object(frame, depth, thruster, &self.camera);
             }
         }
 
-        draw_line_3d(frame, self.ship.position, self.ship.position + Vec3::new(1.0, 0.0, 0.0), &self.camera, 0xff0000ff);
-        draw_line_3d(frame, self.ship.position, self.ship.position + Vec3::new(0.0, 1.0, 0.0), &self.camera, 0x00ff00ff);
-        draw_line_3d(frame, self.ship.position, self.ship.position + Vec3::new(0.0, 0.0, 1.0), &self.camera, 0x0000ffff);
+        draw_line_3d(frame, depth, self.ship.position, self.ship.position + Vec3::new(1.0, 0.0, 0.0), &self.camera, 0xff0000ff);
+        draw_line_3d(frame, depth, self.ship.position, self.ship.position + Vec3::new(0.0, 1.0, 0.0), &self.camera, 0x00ff00ff);
+        draw_line_3d(frame, depth, self.ship.position, self.ship.position + Vec3::new(0.0, 0.0, 1.0), &self.camera, 0x0000ffff);
 
-        self.draw_hud(frame, dt);
+        self.draw_hud(frame, depth, dt);
     }
 
-    pub fn draw_hud(&self, frame: &mut [u8], dt: f32) {
+    pub fn draw_hud(&self, frame: &mut [u8], depth: &mut [f32], dt: f32) {
         for (thrust, t) in self.ship.thrust {
             let (x0, y0, x1, y1, key) = match thrust {
                 Thrust::Left => (0, 7, 6, 13, "A"),
@@ -172,21 +172,21 @@ impl Game {
             };
             let bg: u32 = if t > 0.01 {0xffffffff} else {0x00000000};
             let fg: u32 = if t > 0.01 {0x00000000} else {0xffffffff};
-            draw_rectangle_fill(frame, x0, y0, x1, y1, bg);
-            draw_text(frame, x0 + 1, y0 + 1, key, &FONT_5PX, 6, 1, fg);
+            draw_rectangle_fill(frame, depth, Vec3::new(x0 as f32, y0 as f32, 0.0), Vec3::new(x1 as f32, y1 as f32, 0.0), bg);
+            draw_text(frame, depth, Vec3::new((x0 + 1) as f32, (y0 + 1) as f32, 0.0), key, &FONT_5PX, 6, 1, fg);
         }
-        draw_rectangle_fill(frame, 21, 0, 55, 6, if self.ship.brake {0xffffffff} else {0x000000ff});
-        draw_text(frame, 22, 1, "SPACE", &FONT_5PX, 7, 1, if self.ship.brake {0x000000ff} else {0xffffffff});
+        draw_rectangle_fill(frame, depth, Vec3::new(21.0, 0.0, 0.0), Vec3::new(55.0, 6.0, 0.0), if self.ship.brake {0xffffffff} else {0x000000ff});
+        draw_text(frame, depth, Vec3::new(22.0, 1.0, 0.0), "SPACE", &FONT_5PX, 7, 1, if self.ship.brake {0x000000ff} else {0xffffffff});
 
-        draw_rectangle_fill(frame, 0, 0, 20, 6, if self.ship.boost > 0.0 {0xffffffff} else {0x000000ff});
-        draw_text(frame, 1, 1, "TAB", &FONT_5PX, 7, 1, if self.ship.boost > 0.0 {0x000000ff} else {0xffffffff});
+        draw_rectangle_fill(frame, depth, Vec3::new(0.0, 0.0, 0.0), Vec3::new(20.0, 6.0, 0.0), if self.ship.boost > 0.0 {0xffffffff} else {0x000000ff});
+        draw_text(frame, depth, Vec3::new(1.0, 1.0, 0.0), "TAB", &FONT_5PX, 7, 1, if self.ship.boost > 0.0 {0x000000ff} else {0xffffffff});
     
-        draw_text(frame, 1, (HEIGHT - 6) as i32, &(f32::round(dt * 1000.0) / 1000.0).to_string(), &FONT_5PX, 6, 1, 0xffffffff);
+        draw_text(frame, depth, Vec3::new(1.0, (HEIGHT - 6) as f32, 0.0), &(f32::round(dt * 1000.0) / 1000.0).to_string(), &FONT_5PX, 6, 1, 0xffffffff);
 
         let velocity = format!("{:.3} m/s  ", f32::round(self.ship.velocity.length() * 1000.0) / 1000.0);
         let acceleration = format!("{:.3} m/s^2", f32::round(self.ship.acceleration.length() * 1000.0) / 1000.0);
-        draw_text(frame, WIDTH as i32 - (velocity.len() * 6) as i32, 8 as i32, &velocity, &FONT_5PX, 6, 1, 0xffffffff);
-        draw_text(frame, WIDTH as i32 - (acceleration.len() * 6) as i32, 1 as i32, &acceleration, &FONT_5PX, 6, 1, 0xffffffff);
+        draw_text(frame, depth, Vec3::new(WIDTH as f32 - (velocity.len() * 6) as f32, 8.0, 0.0), &velocity, &FONT_5PX, 6, 1, 0xffffffff);
+        draw_text(frame, depth, Vec3::new(WIDTH as f32 - (acceleration.len() * 6) as f32, 1.0, 0.0), &acceleration, &FONT_5PX, 6, 1, 0xffffffff);
     }
 }
 
@@ -250,7 +250,7 @@ pub fn create_thrusters() -> EnumMap<Thrust, Object> {
             mesh: front_thruster_mesh(),
             model: Mat4::IDENTITY,
             color: color,
-            fill: 0x00000000,
+            fill: 0x000000ff,
         },
         _ => Object {
             mesh: vec![],

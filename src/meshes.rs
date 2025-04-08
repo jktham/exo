@@ -19,14 +19,14 @@ pub fn hull_mesh() -> Vec<Vec<Vec3>> {
 			Vec3::new(0.0, -1.0, 0.0), // mid B
 		],
 		vec![
-			Vec3::new(-2.0, 0.5, 2.0), // thruster LTR
-			Vec3::new(-2.0, -0.5, 2.0), // thruster LBR
-			Vec3::new(-3.0, 0.0, 2.0), // thruster LL
+			Vec3::new(-2.0, 0.5, 2.1), // thruster LTR
+			Vec3::new(-2.0, -0.5, 2.1), // thruster LBR
+			Vec3::new(-3.0, 0.0, 2.1), // thruster LL
 		],
 		vec![
-			Vec3::new(2.0, 0.5, 2.0), // thruster RTL
-			Vec3::new(2.0, -0.5, 2.0), // thruster RBL
-			Vec3::new(3.0, 0.0, 2.0), // thruster RR
+			Vec3::new(2.0, 0.5, 2.1), // thruster RTL
+			Vec3::new(2.0, -0.5, 2.1), // thruster RBL
+			Vec3::new(3.0, 0.0, 2.1), // thruster RR
 		],
 		vec![
 			Vec3::new(-2.0, 1.0, 2.0), // stern TL
@@ -104,14 +104,14 @@ pub fn hull_mesh() -> Vec<Vec<Vec3>> {
 pub fn front_thruster_mesh() -> Vec<Vec<Vec3>> {
 	vec![
 		vec![
-			Vec3::new(-2.0, 0.5, 2.0), // thruster LTR
-			Vec3::new(-2.0, -0.5, 2.0), // thruster LBR
-			Vec3::new(-3.0, 0.0, 2.0), // thruster LL
+			Vec3::new(-2.0, 0.5, 2.1), // thruster LTR
+			Vec3::new(-2.0, -0.5, 2.1), // thruster LBR
+			Vec3::new(-3.0, 0.0, 2.1), // thruster LL
 		],
 		vec![
-			Vec3::new(2.0, 0.5, 2.0), // thruster RTL
-			Vec3::new(2.0, -0.5, 2.0), // thruster RBL
-			Vec3::new(3.0, 0.0, 2.0), // thruster RR
+			Vec3::new(2.0, 0.5, 2.1), // thruster RTL
+			Vec3::new(2.0, -0.5, 2.1), // thruster RBL
+			Vec3::new(3.0, 0.0, 2.1), // thruster RR
 		],
 	]
 }
