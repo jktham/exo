@@ -14,6 +14,7 @@ pub struct Game {
     pub stars: Vec<Object>,
     pub dust: Vec<Object>,
     pub particles: Vec<Particle>,
+    pub asteroids: Vec<Asteroid>,
 }
 
 pub struct Ship {
@@ -67,6 +68,12 @@ pub struct Particle {
     pub lifetime: f32,
 }
 
+pub struct Asteroid {
+    pub object: Object,
+    pub rotation_axis: Vec3,
+    pub rotation_speed: f32,
+}
+
 impl Game {
     pub fn new() -> Self {
         Self {
@@ -98,6 +105,7 @@ impl Game {
             stars: generate_stars(),
             dust: generate_dust(),
             particles: Vec::new(),
+            asteroids: generate_asteroids(),
         }
     }
 
@@ -125,6 +133,10 @@ impl Game {
         for (_thrust, thruster) in &mut self.ship.thrusters {
             thruster.model = self.ship.hull.model;
         }
+
+        for asteroid in &mut self.asteroids {
+            asteroid.object.model *= Mat4::from_axis_angle(asteroid.rotation_axis, asteroid.rotation_speed * dt);
+        }
     }
 
     pub fn draw(&self, frame: &mut [u8], depth: &mut [f32], dt: f32) {
@@ -138,6 +150,9 @@ impl Game {
         }
         for particle in &self.particles {
             draw_object(frame, depth, &particle.object, &self.camera);
+        }
+        for asteroid in &self.asteroids {
+            draw_object(frame, depth, &asteroid.object, &self.camera);
         }
 
         draw_object(frame, depth, &self.ship.hull, &self.camera);
@@ -345,4 +360,28 @@ pub fn add_exhaust_particles(particles: &mut Vec<Particle>, ship: &Ship, dt: f32
             }
         }
     }
+}
+
+pub fn generate_asteroids() -> Vec<Asteroid> {
+    let (min, max): (f32, f32) = (20.0, 4000.0);
+    let mut dust = Vec::new();
+    for _ in 0..200 {
+        let pos = Vec3::new(
+            rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
+            rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
+            rand::rng().sample::<f32, StandardNormal>(StandardNormal),
+        ).normalize() * rand::rng().random_range(min.powf(2.0)..max.powf(2.0)).powf(1.0/2.0);
+        let scale = rand::random_range(1.0..100.0);
+        dust.push(Asteroid {
+            object: Object {
+                mesh: asteroid_mesh(),
+                model: Mat4::from_translation(pos) * Mat4::from_scale(Vec3::new(scale, scale, scale)),
+                color: 0xffffffff,
+                fill: 0x000000ff,
+            },
+            rotation_axis: Vec3::new(rand::random_range(-1.0..1.0), rand::random_range(-1.0..1.0), rand::random_range(-1.0..1.0)).normalize(),
+            rotation_speed: rand::random_range(-1.0..1.0),
+        });
+    }
+    dust
 }

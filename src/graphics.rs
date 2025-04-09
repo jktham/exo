@@ -42,6 +42,9 @@ pub fn bresenham(p0: Vec3, p1: Vec3) -> Vec<Vec3> {
     let (mut x0, mut y0, mut z0) = (p0.x as i32, p0.y as i32, p0.z);
     let (mut x1, mut y1, mut z1) = (p1.x as i32, p1.y as i32, p1.z);
     let mut line = vec![];
+    if x0 < 0 || x0 >= WIDTH as i32 || x1 < 0 || x1 >= WIDTH as i32 || y0 < 0 || y0 >= HEIGHT as i32 || y1 < 0 || y1 >= HEIGHT as i32 {
+        return line;
+    }
     if i32::abs(y1 - y0) < i32::abs(x1 - x0) {
         if x0 > x1 {
             swap(&mut x0, &mut x1);
@@ -101,13 +104,13 @@ pub fn bresenham(p0: Vec3, p1: Vec3) -> Vec<Vec3> {
     line
 }
 
-pub fn map_lines(lines: &Vec<Vec3>) -> HashMap::<i32, Vec<Vec3>> {
-    let mut map_y = HashMap::<i32, Vec<Vec3>>::new();
+pub fn map_lines(lines: &Vec<Vec3>) -> HashMap::<i32, Vec<&Vec3>> {
+    let mut map_y = HashMap::<i32, Vec<&Vec3>>::new();
     for p in lines {
         if map_y.contains_key(&(p.y as i32)) {
-            map_y.get_mut(&(p.y as i32)).unwrap().push(*p);
+            map_y.get_mut(&(p.y as i32)).unwrap().push(p);
         } else {
-            map_y.insert(p.y as i32, vec![*p]);
+            map_y.insert(p.y as i32, vec![p]);
         }
     };
     for (_y, v) in &mut map_y {
@@ -144,9 +147,9 @@ pub fn draw_triangle_fill_outline(frame: &mut [u8], depth: &mut [f32], p0: Vec3,
     let outline_map_y = map_lines(outline_lines);
 
     for (y, v) in map_y {
-        let min = v.first().unwrap();
-        let max = v.last().unwrap();
-        let outline_x: HashSet<i32, RandomState> = HashSet::from_iter(outline_map_y.get(&y).unwrap().iter().map(|p| p.x as i32).collect::<Vec<i32>>());
+        let min = v.first().unwrap_or(&&Vec3::ZERO);
+        let max = v.last().unwrap_or(&&Vec3::ZERO);
+        let outline_x: HashSet<i32, RandomState> = HashSet::from_iter(outline_map_y.get(&y).unwrap_or(&Vec::new()).iter().map(|p| p.x as i32).collect::<Vec<i32>>());
 
         for x in min.x as i32 ..= max.x as i32 {
             let dx = (x as f32 - min.x) / f32::max(max.x - min.x, 1.0);
@@ -254,17 +257,12 @@ pub fn draw_line_3d(frame: &mut [u8], depth: &mut [f32], v0: Vec3, v1: Vec3, cam
     draw_line(frame, depth, p0, p1, color);
 }
 
-pub fn draw_triangle_fill_outline_3d(frame: &mut [u8], depth: &mut [f32], v0: Vec3, v1: Vec3, v2: Vec3, outline_verts: &Vec<Vec3>, camera: &Camera, color: u32, fill: u32) {
+pub fn draw_triangle_fill_outline_3d(frame: &mut [u8], depth: &mut [f32], v0: Vec3, v1: Vec3, v2: Vec3, outline_lines: &Vec<Vec3>, camera: &Camera, color: u32, fill: u32) {
     let p0 = transform_world_to_screen(v0, camera);
     let p1 = transform_world_to_screen(v1, camera);
     let p2 = transform_world_to_screen(v2, camera);
     if p0.z > 1.0 || p1.z > 1.0 || p2.z > 1.0 {
         return;
-    }
-    let outline_points: Vec<Vec3> = outline_verts.iter().map(|v| transform_world_to_screen(*v, camera)).collect();
-    let mut outline_lines = vec![];
-    for i in 0..outline_points.len() {
-        outline_lines.append(&mut bresenham(outline_points[i], outline_points[(i+1) % outline_points.len()]));
     }
     draw_triangle_fill_outline(frame, depth, p0, p1, p2, &outline_lines, color, fill);
 }
@@ -276,11 +274,16 @@ pub fn draw_polygon_3d(frame: &mut [u8], depth: &mut [f32], polygon: &Vec<Vec3>,
         draw_line_3d(frame, depth, polygon[0], polygon[1], camera, color);
     } else if !polygon.is_empty() {
         if fill != 0x00000000 {
+            let outline_points: Vec<Vec3> = polygon.iter().map(|v| transform_world_to_screen(*v, camera)).collect();
+            let mut outline_lines = vec![];
+            for i in 0..outline_points.len() {
+                outline_lines.append(&mut bresenham(outline_points[i], outline_points[(i+1) % outline_points.len()]));
+            }
             for i in 2..polygon.len() {
                 let v0 = polygon[0];
                 let v1 = polygon[i-1];
                 let v2 = polygon[i];
-                draw_triangle_fill_outline_3d(frame, depth, v0, v1, v2, &polygon, camera, color, fill);
+                draw_triangle_fill_outline_3d(frame, depth, v0, v1, v2, &outline_lines, camera, color, fill);
             }
         } else {
             for i in 0..polygon.len() {

@@ -115,3 +115,28 @@ pub fn front_thruster_mesh() -> Vec<Vec<Vec3>> {
 		],
 	]
 }
+
+pub fn asteroid_mesh() -> Vec<Vec<Vec3>> {
+	vec![
+		vec![
+			Vec3::new(0.0, 1.0, -0.7),
+			Vec3::new(-1.0, 0.0, 0.7),
+			Vec3::new(1.0, 0.0, 0.7),
+		],
+		vec![
+			Vec3::new(0.0, -1.0, -0.7),
+			Vec3::new(-1.0, 0.0, 0.7),
+			Vec3::new(1.0, 0.0, 0.7),
+		],
+		vec![
+			Vec3::new(0.0, -1.0, -0.7),
+			Vec3::new(0.0, 1.0, -0.7),
+			Vec3::new(1.0, 0.0, 0.7),
+		],
+		vec![
+			Vec3::new(0.0, -1.0, -0.7),
+			Vec3::new(0.0, 1.0, -0.7),
+			Vec3::new(-1.0, 0.0, 0.7),
+		],
+	]
+}

@@ -1,5 +1,6 @@
 #![deny(clippy::all)]
 #![forbid(unsafe_code)]
+#![allow(dead_code)]
 
 use enum_map::enum_map;
 use error_iter::ErrorIter as _;
