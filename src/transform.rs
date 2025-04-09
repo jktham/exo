@@ -43,3 +43,11 @@ pub fn transform_world_to_screen(vertex: Vec3, camera: &Camera) -> Vec3 {
 
     screen
 }
+
+pub fn out_of_bounds(p: Vec3, tolerance: i32) -> bool {
+    (p.x as i32) < 0 - tolerance || (p.x as i32) >= WIDTH as i32 + tolerance || (p.y as i32) < 0 - tolerance || (p.y as i32) >= HEIGHT as i32 + tolerance
+}
+
+pub fn behind_camera(p: Vec3) -> bool {
+    p.z > 1.0
+}

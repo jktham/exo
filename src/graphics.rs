@@ -6,7 +6,7 @@ use std::mem::swap;
 use glam::Vec3;
 
 use crate::game::{Camera, Object};
-use crate::transform::{transform_mesh, transform_world_to_screen};
+use crate::transform::{behind_camera, out_of_bounds, transform_mesh, transform_world_to_screen};
 use crate::{WIDTH, HEIGHT};
 
 pub fn clear(frame: &mut [u8], depth: &mut [f32], color: u32) {
@@ -23,10 +23,8 @@ pub fn clear(frame: &mut [u8], depth: &mut [f32], color: u32) {
 }
 
 pub fn draw_pixel(frame: &mut [u8], depth: &mut [f32], p: Vec3, color: u32) {
+    if out_of_bounds(p, 0) { return; };
     let (x, y) = (p.x as i32, p.y as i32);
-    if x < 0 || x >= WIDTH as i32 || y < 0 || y >= HEIGHT as i32 {
-        return;
-    }
     let i = (((HEIGHT as i32 - 1 - y) * WIDTH as i32 + x) * 4) as usize;
     if p.z <= depth[i/4] {
         // color = float_to_color(f32::clamp((p.z - 0.975) * 40.0, 0.0, 1.0), 0.0, 0.0, 1.0);
@@ -39,12 +37,11 @@ pub fn draw_pixel(frame: &mut [u8], depth: &mut [f32], p: Vec3, color: u32) {
 }
 
 pub fn bresenham(p0: Vec3, p1: Vec3) -> Vec<Vec3> {
+    if out_of_bounds(p0, 200) || out_of_bounds(p1, 200) { return vec![]; };
     let (mut x0, mut y0, mut z0) = (p0.x as i32, p0.y as i32, p0.z);
     let (mut x1, mut y1, mut z1) = (p1.x as i32, p1.y as i32, p1.z);
     let mut line = vec![];
-    if x0 < 0 || x0 >= WIDTH as i32 || x1 < 0 || x1 >= WIDTH as i32 || y0 < 0 || y0 >= HEIGHT as i32 || y1 < 0 || y1 >= HEIGHT as i32 {
-        return line;
-    }
+
     if i32::abs(y1 - y0) < i32::abs(x1 - x0) {
         if x0 > x1 {
             swap(&mut x0, &mut x1);
@@ -120,11 +117,8 @@ pub fn map_lines(lines: &Vec<Vec3>) -> HashMap::<i32, Vec<&Vec3>> {
 }
 
 pub fn draw_line(frame: &mut [u8], depth: &mut [f32], p0: Vec3, p1: Vec3, color: u32) {
-    let (x0, y0) = (p0.x as i32, p0.y as i32);
-    let (x1, y1) = (p1.x as i32, p1.y as i32);
-    if x0 < 0 || x0 >= WIDTH as i32 || x1 < 0 || x1 >= WIDTH as i32 || y0 < 0 || y0 >= HEIGHT as i32 || y1 < 0 || y1 >= HEIGHT as i32 {
-        return;
-    }
+    if out_of_bounds(p0, 200) || out_of_bounds(p1, 200) { return; };
+
     let line = bresenham(p0, p1);
     for p in line {
         draw_pixel(frame, depth, p, color);
@@ -132,12 +126,8 @@ pub fn draw_line(frame: &mut [u8], depth: &mut [f32], p0: Vec3, p1: Vec3, color:
 }
 
 pub fn draw_triangle_fill_outline(frame: &mut [u8], depth: &mut [f32], p0: Vec3, p1: Vec3, p2: Vec3, outline_lines: &Vec<Vec3>, color: u32, fill: u32) {
-    let (x0, y0) = (p0.x as i32, p0.y as i32);
-    let (x1, y1) = (p1.x as i32, p1.y as i32);
-    let (x2, y2) = (p2.x as i32, p2.y as i32);
-    if x0 < 0 || x0 >= WIDTH as i32 || x1 < 0 || x1 >= WIDTH as i32 || x2 < 0 || x2 >= WIDTH as i32 || y0 < 0 || y0 >= HEIGHT as i32 || y1 < 0 || y1 >= HEIGHT as i32 || y2 < 0 || y2 >= HEIGHT as i32 {
-        return;
-    }
+    if out_of_bounds(p0, 200) || out_of_bounds(p1, 200) || out_of_bounds(p2, 200) { return; };
+    
     let mut lines = vec![];
     lines.append(&mut bresenham(p0, p1));
     lines.append(&mut bresenham(p1, p2));
@@ -242,18 +232,14 @@ pub fn draw_text(frame: &mut [u8], depth: &mut [f32], p: Vec3, text: &str, font:
 
 pub fn draw_point_3d(frame: &mut [u8], depth: &mut [f32], v: Vec3, camera: &Camera, color: u32) {
     let p = transform_world_to_screen(v, camera);
-    if p.z > 1.0 {
-        return;
-    }
+    if behind_camera(p) { return; };
     draw_pixel(frame, depth, p, color);
 }
 
 pub fn draw_line_3d(frame: &mut [u8], depth: &mut [f32], v0: Vec3, v1: Vec3, camera: &Camera, color: u32) {
     let p0 = transform_world_to_screen(v0, camera);
     let p1 = transform_world_to_screen(v1, camera);
-    if p0.z > 1.0 || p1.z > 1.0 {
-        return;
-    }
+    if behind_camera(p0) || behind_camera(p1) { return; };
     draw_line(frame, depth, p0, p1, color);
 }
 
@@ -261,9 +247,7 @@ pub fn draw_triangle_fill_outline_3d(frame: &mut [u8], depth: &mut [f32], v0: Ve
     let p0 = transform_world_to_screen(v0, camera);
     let p1 = transform_world_to_screen(v1, camera);
     let p2 = transform_world_to_screen(v2, camera);
-    if p0.z > 1.0 || p1.z > 1.0 || p2.z > 1.0 {
-        return;
-    }
+    if behind_camera(p0) || behind_camera(p1) || behind_camera(p2) { return; };
     draw_triangle_fill_outline(frame, depth, p0, p1, p2, &outline_lines, color, fill);
 }
 
