@@ -6,7 +6,7 @@ use std::mem::swap;
 use glam::Vec3;
 
 use crate::game::{Camera, Object};
-use crate::transform::{behind_camera, out_of_bounds, transform_mesh, transform_world_to_screen};
+use crate::transform::{out_of_bounds, transform_mesh, transform_world_to_screen};
 use crate::{WIDTH, HEIGHT};
 
 pub fn clear(frame: &mut [u8], depth: &mut [f32], color: u32) {
@@ -232,14 +232,14 @@ pub fn draw_text(frame: &mut [u8], depth: &mut [f32], p: Vec3, text: &str, font:
 
 pub fn draw_point_3d(frame: &mut [u8], depth: &mut [f32], v: Vec3, camera: &Camera, color: u32) {
     let p = transform_world_to_screen(v, camera);
-    if behind_camera(p) { return; };
+    if out_of_bounds(p, 200) { return; };
     draw_pixel(frame, depth, p, color);
 }
 
 pub fn draw_line_3d(frame: &mut [u8], depth: &mut [f32], v0: Vec3, v1: Vec3, camera: &Camera, color: u32) {
     let p0 = transform_world_to_screen(v0, camera);
     let p1 = transform_world_to_screen(v1, camera);
-    if behind_camera(p0) || behind_camera(p1) { return; };
+    if out_of_bounds(p0, 200) || out_of_bounds(p1, 200) { return; };
     draw_line(frame, depth, p0, p1, color);
 }
 
@@ -247,7 +247,7 @@ pub fn draw_triangle_fill_outline_3d(frame: &mut [u8], depth: &mut [f32], v0: Ve
     let p0 = transform_world_to_screen(v0, camera);
     let p1 = transform_world_to_screen(v1, camera);
     let p2 = transform_world_to_screen(v2, camera);
-    if behind_camera(p0) || behind_camera(p1) || behind_camera(p2) { return; };
+    if out_of_bounds(p0, 200) || out_of_bounds(p1, 200) || out_of_bounds(p2, 200) { return; };
     draw_triangle_fill_outline(frame, depth, p0, p1, p2, &outline_lines, color, fill);
 }
 
@@ -284,6 +284,9 @@ pub fn draw_mesh_3d(frame: &mut [u8], depth: &mut [f32], mesh: &Vec<Vec<Vec3>>, 
 }
 
 pub fn draw_object(frame: &mut [u8], depth: &mut [f32], object: &Object, camera: &Camera) {
+    let v = if object.mesh.len() > 0 && object.mesh[0].len() > 0 { object.mesh[0][0] } else { Vec3::ZERO };
+    let p = transform_world_to_screen(object.model.transform_point3(v), camera);
+    if out_of_bounds(p, 200) { return; };
     draw_mesh_3d(frame, depth, &transform_mesh(&object.mesh, object.model), camera, object.color, object.fill);
 }
 

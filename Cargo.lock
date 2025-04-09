@@ -481,6 +481,7 @@ dependencies = [
  "pollster",
  "rand",
  "rand_distr",
+ "regex",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

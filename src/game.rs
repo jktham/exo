@@ -364,17 +364,18 @@ pub fn add_exhaust_particles(particles: &mut Vec<Particle>, ship: &Ship, dt: f32
 
 pub fn generate_asteroids() -> Vec<Asteroid> {
     let (min, max): (f32, f32) = (20.0, 4000.0);
-    let mut dust = Vec::new();
-    for _ in 0..200 {
+    let mut asteroids = Vec::new();
+    let mesh = parse_obj(ASTEROID_OBJ);
+    for _ in 0..100 {
         let pos = Vec3::new(
             rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
             rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
             rand::rng().sample::<f32, StandardNormal>(StandardNormal),
         ).normalize() * rand::rng().random_range(min.powf(2.0)..max.powf(2.0)).powf(1.0/2.0);
         let scale = rand::random_range(1.0..100.0);
-        dust.push(Asteroid {
+        asteroids.push(Asteroid {
             object: Object {
-                mesh: asteroid_mesh(),
+                mesh: mesh.clone(),
                 model: Mat4::from_translation(pos) * Mat4::from_scale(Vec3::new(scale, scale, scale)),
                 color: 0xffffffff,
                 fill: 0x000000ff,
@@ -383,5 +384,5 @@ pub fn generate_asteroids() -> Vec<Asteroid> {
             rotation_speed: rand::random_range(-1.0..1.0),
         });
     }
-    dust
+    asteroids
 }
