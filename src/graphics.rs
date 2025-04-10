@@ -1,7 +1,6 @@
 use core::f32;
 use std::cmp::{max, min};
 use std::collections::{HashMap, HashSet};
-use std::hash::RandomState;
 use std::mem::swap;
 use glam::Vec3;
 
@@ -37,10 +36,13 @@ pub fn draw_pixel(frame: &mut [u8], depth: &mut [f32], p: Vec3, color: u32) {
 }
 
 pub fn bresenham(p0: Vec3, p1: Vec3) -> Vec<Vec3> {
-    if out_of_bounds(p0, 200) || out_of_bounds(p1, 200) { return vec![]; };
+    if out_of_bounds(p0, 0) || out_of_bounds(p1, 0) { return vec![]; };
     let (mut x0, mut y0, mut z0) = (p0.x as i32, p0.y as i32, p0.z);
     let (mut x1, mut y1, mut z1) = (p1.x as i32, p1.y as i32, p1.z);
-    let mut line = vec![];
+
+    let length = max(i32::abs(y1 - y0), i32::abs(x1 - x0)) + 1;
+    if length > (WIDTH * 4) as i32 { return vec![]; };
+    let mut line = Vec::with_capacity(length as usize);
 
     if i32::abs(y1 - y0) < i32::abs(x1 - x0) {
         if x0 > x1 {
@@ -101,23 +103,38 @@ pub fn bresenham(p0: Vec3, p1: Vec3) -> Vec<Vec3> {
     line
 }
 
-pub fn map_lines(lines: &Vec<Vec3>) -> HashMap::<i32, Vec<&Vec3>> {
-    let mut map_y = HashMap::<i32, Vec<&Vec3>>::new();
+pub fn map_lines(lines: &Vec<Vec3>) -> HashMap::<i32, (Vec3, Vec3)> {
+    let mut map_y = HashMap::<i32, (Vec3, Vec3)>::new();
     for p in lines {
         if map_y.contains_key(&(p.y as i32)) {
-            map_y.get_mut(&(p.y as i32)).unwrap().push(p);
+            let e = map_y.get_mut(&(p.y as i32)).unwrap();
+            if p.x < e.0.x {
+                e.0 = *p;
+            }
+            if p.x > e.1.x {
+                e.1 = *p;
+            }
         } else {
-            map_y.insert(p.y as i32, vec![p]);
+            map_y.insert(p.y as i32, (*p, *p));
         }
     };
-    for (_y, v) in &mut map_y {
-        v.sort_by(|a, b| (a.x as i32).cmp(&(b.x as i32)));
-    }
     map_y
 }
 
+pub fn map_outline(outline_lines: &Vec<Vec3>) -> HashMap::<i32, HashSet<i32>> {
+    let mut outline_map_y = HashMap::<i32, HashSet<i32>>::new();
+    for p in outline_lines {
+        if outline_map_y.contains_key(&(p.y as i32)) {
+            outline_map_y.get_mut(&(p.y as i32)).unwrap().insert(p.x as i32);
+        } else {
+            outline_map_y.insert(p.y as i32, HashSet::from([p.x as i32]));
+        }
+    };
+    outline_map_y
+}
+
 pub fn draw_line(frame: &mut [u8], depth: &mut [f32], p0: Vec3, p1: Vec3, color: u32) {
-    if out_of_bounds(p0, 200) || out_of_bounds(p1, 200) { return; };
+    if out_of_bounds(p0, 0) || out_of_bounds(p1, 0) { return; };
 
     let line = bresenham(p0, p1);
     for p in line {
@@ -126,7 +143,7 @@ pub fn draw_line(frame: &mut [u8], depth: &mut [f32], p0: Vec3, p1: Vec3, color:
 }
 
 pub fn draw_triangle_fill_outline(frame: &mut [u8], depth: &mut [f32], p0: Vec3, p1: Vec3, p2: Vec3, outline_lines: &Vec<Vec3>, color: u32, fill: u32) {
-    if out_of_bounds(p0, 200) || out_of_bounds(p1, 200) || out_of_bounds(p2, 200) { return; };
+    if out_of_bounds(p0, 0) || out_of_bounds(p1, 0) || out_of_bounds(p2, 0) { return; };
     
     let mut lines = vec![];
     lines.append(&mut bresenham(p0, p1));
@@ -134,12 +151,13 @@ pub fn draw_triangle_fill_outline(frame: &mut [u8], depth: &mut [f32], p0: Vec3,
     lines.append(&mut bresenham(p2, p0));
 
     let map_y = map_lines(&lines);
-    let outline_map_y = map_lines(outline_lines);
+    let outline_map_y = map_outline(outline_lines);
 
     for (y, v) in map_y {
-        let min = v.first().unwrap_or(&&Vec3::ZERO);
-        let max = v.last().unwrap_or(&&Vec3::ZERO);
-        let outline_x: HashSet<i32, RandomState> = HashSet::from_iter(outline_map_y.get(&y).unwrap_or(&Vec::new()).iter().map(|p| p.x as i32).collect::<Vec<i32>>());
+        let min = v.0;
+        let max = v.1;
+        let empty = HashSet::<i32>::new();
+        let outline_x: &HashSet<i32> = outline_map_y.get(&y).unwrap_or(&empty);
 
         for x in min.x as i32 ..= max.x as i32 {
             let dx = (x as f32 - min.x) / f32::max(max.x - min.x, 1.0);
@@ -232,14 +250,12 @@ pub fn draw_text(frame: &mut [u8], depth: &mut [f32], p: Vec3, text: &str, font:
 
 pub fn draw_point_3d(frame: &mut [u8], depth: &mut [f32], v: Vec3, camera: &Camera, color: u32) {
     let p = transform_world_to_screen(v, camera);
-    if out_of_bounds(p, 200) { return; };
     draw_pixel(frame, depth, p, color);
 }
 
 pub fn draw_line_3d(frame: &mut [u8], depth: &mut [f32], v0: Vec3, v1: Vec3, camera: &Camera, color: u32) {
     let p0 = transform_world_to_screen(v0, camera);
     let p1 = transform_world_to_screen(v1, camera);
-    if out_of_bounds(p0, 200) || out_of_bounds(p1, 200) { return; };
     draw_line(frame, depth, p0, p1, color);
 }
 
@@ -247,7 +263,6 @@ pub fn draw_triangle_fill_outline_3d(frame: &mut [u8], depth: &mut [f32], v0: Ve
     let p0 = transform_world_to_screen(v0, camera);
     let p1 = transform_world_to_screen(v1, camera);
     let p2 = transform_world_to_screen(v2, camera);
-    if out_of_bounds(p0, 200) || out_of_bounds(p1, 200) || out_of_bounds(p2, 200) { return; };
     draw_triangle_fill_outline(frame, depth, p0, p1, p2, &outline_lines, color, fill);
 }
 
@@ -267,7 +282,15 @@ pub fn draw_polygon_3d(frame: &mut [u8], depth: &mut [f32], polygon: &Vec<Vec3>,
                 let v0 = polygon[0];
                 let v1 = polygon[i-1];
                 let v2 = polygon[i];
-                draw_triangle_fill_outline_3d(frame, depth, v0, v1, v2, &outline_lines, camera, color, fill);
+
+                let normal = (v1 - v0).cross(v2 - v0).normalize() * 10.0;
+                if normal.dot(camera.position - v0) >= 0.0 {
+                    draw_triangle_fill_outline_3d(frame, depth, v0, v1, v2, &outline_lines, camera, color, fill);
+                } else {
+                    draw_line_3d(frame, depth, v0, v1, camera, color);
+                    draw_line_3d(frame, depth, v1, v2, camera, color);
+                    draw_line_3d(frame, depth, v2, v0, camera, color);
+                }
             }
         } else {
             for i in 0..polygon.len() {
@@ -283,10 +306,8 @@ pub fn draw_mesh_3d(frame: &mut [u8], depth: &mut [f32], mesh: &Vec<Vec<Vec3>>, 
     }
 }
 
+// todo: check bounding box
 pub fn draw_object(frame: &mut [u8], depth: &mut [f32], object: &Object, camera: &Camera) {
-    let v = if object.mesh.len() > 0 && object.mesh[0].len() > 0 { object.mesh[0][0] } else { Vec3::ZERO };
-    let p = transform_world_to_screen(object.model.transform_point3(v), camera);
-    if out_of_bounds(p, 200) { return; };
     draw_mesh_3d(frame, depth, &transform_mesh(&object.mesh, object.model), camera, object.color, object.fill);
 }
 
