@@ -1,6 +1,7 @@
 use core::f32;
 use std::cmp::{max, min};
 use std::collections::{HashMap, HashSet};
+use fxhash::FxBuildHasher;
 use std::mem::swap;
 use glam::Vec3;
 
@@ -103,8 +104,8 @@ pub fn bresenham(p0: Vec3, p1: Vec3) -> Vec<Vec3> {
     line
 }
 
-pub fn map_lines(lines: &Vec<Vec3>) -> HashMap::<i32, (Vec3, Vec3)> {
-    let mut map_y = HashMap::<i32, (Vec3, Vec3)>::new();
+pub fn map_lines(lines: &Vec<Vec3>) -> HashMap::<i32, (Vec3, Vec3), FxBuildHasher> {
+    let mut map_y = HashMap::<i32, (Vec3, Vec3), FxBuildHasher>::default();
     for p in lines {
         if map_y.contains_key(&(p.y as i32)) {
             let e = map_y.get_mut(&(p.y as i32)).unwrap();
@@ -121,13 +122,13 @@ pub fn map_lines(lines: &Vec<Vec3>) -> HashMap::<i32, (Vec3, Vec3)> {
     map_y
 }
 
-pub fn map_outline(outline_lines: &Vec<Vec3>) -> HashMap::<i32, HashSet<i32>> {
-    let mut outline_map_y = HashMap::<i32, HashSet<i32>>::new();
+pub fn map_outline(outline_lines: &Vec<Vec3>) -> HashMap::<i32, HashSet<i32, FxBuildHasher>, FxBuildHasher> {
+    let mut outline_map_y = HashMap::<i32, HashSet<i32, FxBuildHasher>, FxBuildHasher>::default();
     for p in outline_lines {
         if outline_map_y.contains_key(&(p.y as i32)) {
             outline_map_y.get_mut(&(p.y as i32)).unwrap().insert(p.x as i32);
         } else {
-            outline_map_y.insert(p.y as i32, HashSet::from([p.x as i32]));
+            outline_map_y.insert(p.y as i32, HashSet::<i32, FxBuildHasher>::from_iter([p.x as i32]));
         }
     };
     outline_map_y
@@ -156,8 +157,8 @@ pub fn draw_triangle_fill_outline(frame: &mut [u8], depth: &mut [f32], p0: Vec3,
     for (y, v) in map_y {
         let min = v.0;
         let max = v.1;
-        let empty = HashSet::<i32>::new();
-        let outline_x: &HashSet<i32> = outline_map_y.get(&y).unwrap_or(&empty);
+        let empty = HashSet::<i32, FxBuildHasher>::default();
+        let outline_x = outline_map_y.get(&y).unwrap_or(&empty);
 
         for x in min.x as i32 ..= max.x as i32 {
             let dx = (x as f32 - min.x) / f32::max(max.x - min.x, 1.0);
