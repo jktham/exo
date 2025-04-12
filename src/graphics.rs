@@ -270,10 +270,13 @@ pub fn draw_triangle_fill_outline_3d(frame: &mut [u8], depth: &mut [f32], v0: Ve
 pub fn draw_polygon_3d(frame: &mut [u8], depth: &mut [f32], polygon: &Vec<Vec3>, camera: &Camera, color: u32, fill: u32) {
     if polygon.len() == 1 {
         draw_point_3d(frame, depth, polygon[0], camera, color);
+
     } else if polygon.len() == 2 {
         draw_line_3d(frame, depth, polygon[0], polygon[1], camera, color);
-    } else if !polygon.is_empty() {
-        if fill != 0x00000000 {
+
+    } else if polygon.len() >= 3 {
+        let normal = (polygon[1] - polygon[0]).cross(polygon[2] - polygon[0]).normalize() * 10.0;
+        if fill != 0x00000000 && normal.dot(camera.position - polygon[0]) >= 0.0 {
             let outline_points: Vec<Vec3> = polygon.iter().map(|v| transform_world_to_screen(*v, camera)).collect();
             let mut outline_lines = vec![];
             for i in 0..outline_points.len() {
@@ -283,15 +286,7 @@ pub fn draw_polygon_3d(frame: &mut [u8], depth: &mut [f32], polygon: &Vec<Vec3>,
                 let v0 = polygon[0];
                 let v1 = polygon[i-1];
                 let v2 = polygon[i];
-
-                let normal = (v1 - v0).cross(v2 - v0).normalize() * 10.0;
-                if normal.dot(camera.position - v0) >= 0.0 {
-                    draw_triangle_fill_outline_3d(frame, depth, v0, v1, v2, &outline_lines, camera, color, fill);
-                } else {
-                    draw_line_3d(frame, depth, v0, v1, camera, color);
-                    draw_line_3d(frame, depth, v1, v2, camera, color);
-                    draw_line_3d(frame, depth, v2, v0, camera, color);
-                }
+                draw_triangle_fill_outline_3d(frame, depth, v0, v1, v2, &outline_lines, camera, color, fill);
             }
         } else {
             for i in 0..polygon.len() {
@@ -320,7 +315,7 @@ pub fn color_to_float(color: u32) -> (f32, f32, f32, f32) {
     (r, g, b, a)
 }
 
-pub fn float_to_color(r: f32, g: f32, b: f32, a: f32) -> u32 {
+pub fn float_to_color((r, g, b, a): (f32, f32, f32, f32)) -> u32 {
     let mut color = 0x00000000;
     color |= ((r * 255.0) as u32) << 24;
     color |= ((g * 255.0) as u32) << 16;

@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use enum_map::{enum_map, Enum, EnumMap};
 use glam::Quat;
 use glam::{Mat4, Vec3};
@@ -121,9 +123,9 @@ impl Game {
         for particle in &mut self.particles {
             particle.lifetime -= dt;
             if particle.lifetime < 1.0 {
-                let (r, g, b, a) = color_to_float(0xff00ffff);
+                let (r, g, b, a) = color_to_float(particle.object.color);
                 let brightness = f32::max(0.0, particle.lifetime);
-                particle.object.color = float_to_color(brightness*r, brightness*g, brightness*b, a);
+                particle.object.color = float_to_color((brightness*r, brightness*g, brightness*b, a));
             }
         }
         self.particles.retain(|p| p.lifetime > 0.0);
@@ -146,7 +148,11 @@ impl Game {
             draw_object(frame, depth, star, &self.camera);
         }
         for dust in &self.dust {
-            draw_object(frame, depth, dust, &self.camera);
+            let trail = -self.ship.velocity * 0.005;
+            if trail.length() > 0.1 {
+                draw_line_3d(frame, depth, dust.mesh[0][0], dust.mesh[0][0] + trail, &self.camera, dust.color);
+            }
+            draw_object(frame, depth, &dust, &self.camera);
         }
         for particle in &self.particles {
             draw_object(frame, depth, &particle.object, &self.camera);
@@ -205,78 +211,6 @@ impl Game {
     }
 }
 
-pub fn generate_stars() -> Vec<Object> {
-    const COUNT: usize = 1000;
-
-    let mut stars = Vec::new();
-    for _ in 0..COUNT {
-        let pos = Vec3::new(
-            rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
-            rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
-            rand::rng().sample::<f32, StandardNormal>(StandardNormal),
-        ).normalize() * 1000.0;
-        let b = (rand::rng().random::<f32>() * 255.0) as u32 & 0xff;
-        let col = (b << 24) | (b << 16) | (b << 8) | 0xff;
-        stars.push(Object {
-            mesh: vec![vec![pos]],
-            model: Mat4::IDENTITY,
-            color: col,
-            fill: 0x00000000,
-        });
-    }
-    stars
-}
-
-pub fn update_dust(dust: &mut Vec<Object>, center: Vec3, first: bool) {
-    const COUNT: usize = 200;
-    const MIN_DIST: f32 = 70.0;
-    const MAX_DIST: f32 = 80.0;
-
-    dust.retain(|d| (d.mesh[0][0] - center).length() <= MAX_DIST);
-    while dust.len() < COUNT {
-        let pos = Vec3::new(
-            rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
-            rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
-            rand::rng().sample::<f32, StandardNormal>(StandardNormal),
-        ).normalize() * rand::rng().random_range(if first {0.0} else {MIN_DIST.powf(3.0)}..=MAX_DIST.powf(3.0)).powf(1.0/3.0);
-        dust.push(Object {
-            mesh: vec![vec![center + pos]],
-            model: Mat4::IDENTITY,
-            color: 0xffffffff,
-            fill: 0x00000000,
-        });
-    }
-    for d in dust {
-        let brightness = f32::max(0.0, 1.0 - (d.mesh[0][0] - center).length() / MIN_DIST);
-        d.color = float_to_color(brightness, brightness, brightness, 1.0);
-    }
-}
-
-pub fn generate_dust() -> Vec<Object> {
-    let mut dust = Vec::new();
-    update_dust(&mut dust, Vec3::ZERO, true);
-    dust
-}
-
-pub fn create_thrusters() -> EnumMap<Thrust, Object> {
-    let color = 0xff00ffff;
-    let thrusters = enum_map! {
-        Thrust::Front => Object {
-            mesh: front_thruster_mesh(),
-            model: Mat4::IDENTITY,
-            color: color,
-            fill: 0x000000ff,
-        },
-        _ => Object {
-            mesh: vec![],
-            model: Mat4::IDENTITY,
-            color: color,
-            fill: 0x00000000,
-        },
-    };
-    thrusters
-}
-
 pub fn update_ship_movement(ship: &mut Ship, dt: f32) {
     if ship.brake {
         let angular_brake_thrust = Vec3::from(ship.angular_velocity.inverse().to_euler(glam::EulerRot::XYZ)) * 200.0;
@@ -323,10 +257,83 @@ pub fn update_camera_position(camera: &mut Camera, ship: &Ship) {
     let position_offset = Vec3::new(0.0, 4.0, 10.0);
     let rotation_offset = Vec3::new(0.0, 0.0, 0.0);
     let trailing_factor = 0.85;
+
     camera.position = camera.position * trailing_factor + (ship.position + ship.rotation * position_offset) * (1.0 - trailing_factor);
     camera.rotation = Quat::look_at_rh(camera.position, ship.position + ship.rotation * rotation_offset, ship.rotation * Vec3::new(0.0, 1.0, 0.0)).inverse();
     camera.model = Mat4::from_rotation_translation(camera.rotation, camera.position);
     camera.view = camera.model.inverse();
+}
+
+pub fn generate_stars() -> Vec<Object> {
+    let count = 1000;
+
+    let mut stars = Vec::new();
+    for _ in 0..count {
+        let pos = Vec3::new(
+            rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
+            rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
+            rand::rng().sample::<f32, StandardNormal>(StandardNormal),
+        ).normalize() * 1000.0;
+        let b = (rand::rng().random::<f32>() * 255.0) as u32 & 0xff;
+        let col = (b << 24) | (b << 16) | (b << 8) | 0xff;
+        stars.push(Object {
+            mesh: vec![vec![pos]],
+            model: Mat4::IDENTITY,
+            color: col,
+            fill: 0x00000000,
+        });
+    }
+    stars
+}
+
+pub fn update_dust(dust: &mut Vec<Object>, center: Vec3, first: bool) {
+    let count: usize = 200;
+    let (min_dist, max_dist): (f32, f32) = (90.0, 100.0);
+
+    dust.retain(|d| (d.mesh[0][0] - center).length() <= max_dist);
+    while dust.len() < count {
+        let pos = Vec3::new(
+            rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
+            rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
+            rand::rng().sample::<f32, StandardNormal>(StandardNormal),
+        ).normalize() * rand::rng().random_range(if first {0.0} else {min_dist.powf(3.0)}..=max_dist.powf(3.0)).powf(1.0/3.0);
+        dust.push(Object {
+            mesh: vec![vec![center + pos]],
+            model: Mat4::IDENTITY,
+            color: 0xffffffff,
+            fill: 0x00000000,
+        });
+    }
+    for d in dust {
+        let brightness = f32::max(0.0, 1.0 - (d.mesh[0][0] - center).length() / min_dist);
+        d.color = float_to_color((brightness, brightness, brightness, 1.0));
+    }
+}
+
+pub fn generate_dust() -> Vec<Object> {
+    let mut dust = Vec::new();
+    update_dust(&mut dust, Vec3::ZERO, true);
+    dust
+}
+
+pub fn create_thrusters() -> EnumMap<Thrust, Object> {
+    let color = 0xff00ffff;
+
+    let thrusters = enum_map! {
+        Thrust::Front => Object {
+            mesh: front_thruster_mesh(),
+            model: Mat4::IDENTITY,
+            color: color,
+            fill: 0x000000ff,
+        },
+        _ => Object {
+            mesh: vec![],
+            model: Mat4::IDENTITY,
+            color: color,
+            fill: 0x00000000,
+        },
+    };
+    thrusters
 }
 
 pub fn add_exhaust_particles(particles: &mut Vec<Particle>, ship: &Ship, dt: f32) {
@@ -363,16 +370,21 @@ pub fn add_exhaust_particles(particles: &mut Vec<Particle>, ship: &Ship, dt: f32
 }
 
 pub fn generate_asteroids() -> Vec<Asteroid> {
-    let (min, max): (f32, f32) = (20.0, 4000.0);
-    let mut asteroids = Vec::new();
+    let count = 100;
+    let (min_dist, max_dist): (f32, f32) = (100.0, 4000.0);
+    let (min_scale, max_scale): (f32, f32) = (1.0, 100.0);
+    let belt_plane_rotation = Mat4::from_axis_angle(Vec3::new(rand::random::<f32>(), rand::random::<f32>(), rand::random::<f32>()).normalize(), rand::random::<f32>() * PI);
     let mesh = parse_obj(ASTEROID_OBJ);
-    for _ in 0..100 {
-        let pos = Vec3::new(
+
+    let mut asteroids = Vec::with_capacity(100);
+    for _ in 0..count {
+        let pos = belt_plane_rotation.transform_point3(Vec3::new(
             rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
             rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
             rand::rng().sample::<f32, StandardNormal>(StandardNormal),
-        ).normalize() * rand::rng().random_range(min.powf(2.0)..max.powf(2.0)).powf(1.0/2.0);
-        let scale = rand::random_range(1.0..100.0);
+        ).normalize() * rand::rng().random_range(min_dist.powf(2.0)..max_dist.powf(2.0)).powf(1.0/2.0) * Vec3::new(1.0, 0.2, 1.0));
+        let scale = rand::random_range(min_scale..max_scale);
+
         asteroids.push(Asteroid {
             object: Object {
                 mesh: mesh.clone(),
