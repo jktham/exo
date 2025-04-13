@@ -28,6 +28,7 @@ pub struct Ship {
     pub angular_acceleration: Quat,
     pub thrust: EnumMap<Thrust, f32>,
     pub boost: f32,
+    pub jumping: bool,
     pub brake: bool,
     pub hull: Object,
     pub thrusters: EnumMap<Thrust, Object>,
@@ -89,6 +90,7 @@ impl Game {
                 thrust: enum_map! {_ => 0.0},
                 boost: 0.0,
                 brake: false,
+                jumping: false,
                 hull: Object {
                     mesh: hull_mesh(),
                     model: Mat4::IDENTITY,
@@ -142,7 +144,12 @@ impl Game {
     }
 
     pub fn draw(&self, frame: &mut [u8], depth: &mut [f32], dt: f32) {
-        clear(frame, depth, 0x000000ff);
+        if self.ship.jumping {
+            clear_depth(depth);
+            clear_fade(frame, 0.95);
+        } else {
+            clear(frame, depth, 0x000000ff);
+        }
 
         for star in &self.stars {
             draw_object(frame, depth, star, &self.camera);
@@ -199,8 +206,11 @@ impl Game {
         draw_rectangle_fill(frame, depth, Vec3::new(21.0, 0.0, 0.0), Vec3::new(55.0, 6.0, 0.0), if self.ship.brake {0xffffffff} else {0x000000ff});
         draw_text(frame, depth, Vec3::new(22.0, 1.0, 0.0), "SPACE", &FONT_5PX, 7, 1, if self.ship.brake {0x000000ff} else {0xffffffff});
 
-        draw_rectangle_fill(frame, depth, Vec3::new(0.0, 0.0, 0.0), Vec3::new(20.0, 6.0, 0.0), if self.ship.boost > 0.0 {0xffffffff} else {0x000000ff});
-        draw_text(frame, depth, Vec3::new(1.0, 1.0, 0.0), "TAB", &FONT_5PX, 7, 1, if self.ship.boost > 0.0 {0x000000ff} else {0xffffffff});
+        draw_rectangle_fill(frame, depth, Vec3::new(0.0, 21.0, 0.0), Vec3::new(20.0, 27.0, 0.0), if self.ship.boost > 0.0 {0xffffffff} else {0x000000ff});
+        draw_text(frame, depth, Vec3::new(1.0, 22.0, 0.0), "TAB", &FONT_5PX, 7, 1, if self.ship.boost > 0.0 {0x000000ff} else {0xffffffff});
+
+        draw_rectangle_fill(frame, depth, Vec3::new(0.0, 0.0, 0.0), Vec3::new(20.0, 6.0, 0.0), if self.ship.jumping {0xffffffff} else {0x000000ff});
+        draw_text(frame, depth, Vec3::new(1.0, 1.0, 0.0), "ALT", &FONT_5PX, 7, 1, if self.ship.jumping {0x000000ff} else {0xffffffff});
     
         draw_text(frame, depth, Vec3::new(1.0, (HEIGHT - 6) as f32, 0.0), &(f32::round(dt * 1000.0) / 1000.0).to_string(), &FONT_5PX, 6, 1, 0xffffffff);
 
@@ -228,6 +238,12 @@ pub fn update_ship_movement(ship: &mut Ship, dt: f32) {
         if ship.thrust[Thrust::Up] == 0.0 && ship.thrust[Thrust::Down] == 0.0 {ship.thrust[Thrust::Down] = f32::clamp(brake_thrust.y, 0.0, 20.0);}
         if ship.thrust[Thrust::Back] == 0.0 && ship.thrust[Thrust::Front] == 0.0 {ship.thrust[Thrust::Back] = f32::clamp(-brake_thrust.z, 0.0, 20.0);}
         if ship.thrust[Thrust::Back] == 0.0 && ship.thrust[Thrust::Front] == 0.0 {ship.thrust[Thrust::Front] = f32::clamp(brake_thrust.z, 0.0, 40.0);}
+    }
+
+    if ship.jumping {
+        ship.thrust = enum_map! {
+            _ => 0.0,
+        };
     }
 
     ship.angular_acceleration = Quat::from_euler(
@@ -262,6 +278,19 @@ pub fn update_camera_position(camera: &mut Camera, ship: &Ship) {
     camera.rotation = Quat::look_at_rh(camera.position, ship.position + ship.rotation * rotation_offset, ship.rotation * Vec3::new(0.0, 1.0, 0.0)).inverse();
     camera.model = Mat4::from_rotation_translation(camera.rotation, camera.position);
     camera.view = camera.model.inverse();
+}
+
+pub fn start_jump(ship: &mut Ship, dt: f32) {
+    ship.thrust = enum_map! {
+        _ => 0.0,
+    };
+    ship.angular_velocity = Quat::from_euler(glam::EulerRot::XYZ, 0.0, 0.0, 1.0 * dt);
+    ship.velocity = ship.rotation * Vec3::new(0.0, 0.0, -10000.0);
+}
+
+pub fn end_jump(ship: &mut Ship) {
+    ship.angular_velocity = Quat::from_euler(glam::EulerRot::XYZ, 0.0, 0.0, 0.0);
+    ship.velocity = ship.rotation * Vec3::new(0.0, 0.0, -100.0);
 }
 
 pub fn generate_stars() -> Vec<Object> {
@@ -370,8 +399,8 @@ pub fn add_exhaust_particles(particles: &mut Vec<Particle>, ship: &Ship, dt: f32
 }
 
 pub fn generate_asteroids() -> Vec<Asteroid> {
-    let count = 100;
-    let (min_dist, max_dist): (f32, f32) = (100.0, 4000.0);
+    let count = 200;
+    let (min_dist, max_dist): (f32, f32) = (100.0, 10000.0);
     let (min_scale, max_scale): (f32, f32) = (1.0, 100.0);
     let belt_plane_rotation = Mat4::from_axis_angle(Vec3::new(rand::random::<f32>(), rand::random::<f32>(), rand::random::<f32>()).normalize(), rand::random::<f32>() * PI);
     let mesh = parse_obj(ASTEROID_OBJ);

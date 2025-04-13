@@ -212,13 +212,20 @@ async fn run() {
             if input.key_held(KeyCode::KeyO) {
                 game.ship.thrust[Thrust::RollCW] = 5.0;
             }
-            if input.key_held(KeyCode::Space) {
+            if input.key_held(KeyCode::Space) && !game.ship.jumping {
                 game.ship.brake = true;
             } else {
                 game.ship.brake = false;
             }
-            if input.key_pressed(KeyCode::Tab) {
+            if input.key_pressed(KeyCode::Tab) && !game.ship.jumping {
                 game.ship.boost = 400.0;
+            }
+            if input.key_pressed(KeyCode::AltLeft) {
+                game.ship.jumping = !game.ship.jumping;
+                match game.ship.jumping {
+                    true => start_jump(&mut game.ship, dt),
+                    false => end_jump(&mut game.ship),
+                }
             }
         }
     });

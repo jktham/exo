@@ -2,6 +2,9 @@ use core::f32;
 use glam::{Vec3, Vec4, Mat4};
 use crate::{game::Camera, HEIGHT, WIDTH};
 
+pub const NEAR: f32 = 0.01;
+pub const FAR: f32 = 100000.0;
+
 pub fn transform_vertex(vertex: Vec3, model: Mat4) -> Vec3 {
 	model.transform_point3(vertex)
 }
@@ -17,8 +20,8 @@ pub fn transform_mesh(mesh: &Vec<Vec<Vec3>>, model: Mat4) -> Vec<Vec<Vec3>> {
 pub fn transform_world_to_screen(vertex: Vec3, camera: &Camera) -> Vec3 {
     let w = WIDTH as f32;
     let h = HEIGHT as f32;
-    let n = 0.1;
-    let f = 10000.0;
+    let n = NEAR;
+    let f = FAR;
     let phi = camera.fov / 180.0 * f32::consts::PI;
     let r = f32::tan(phi/2.0) * n;
     let t = r * h/w;

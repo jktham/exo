@@ -6,14 +6,45 @@ use std::mem::swap;
 use glam::Vec3;
 
 use crate::game::{Camera, Object};
-use crate::transform::{out_of_bounds, transform_mesh, transform_world_to_screen};
+use crate::transform::{out_of_bounds, transform_mesh, transform_world_to_screen, FAR};
 use crate::{WIDTH, HEIGHT};
 
 pub fn clear(frame: &mut [u8], depth: &mut [f32], color: u32) {
     for x in 0..WIDTH as i32 {
         for y in 0..HEIGHT as i32 {
             let i = (((HEIGHT as i32 - 1 - y) * WIDTH as i32 + x) * 4) as usize;
-            depth[i/4] = 10000.0;
+            depth[i/4] = FAR;
+            frame[i] = (color >> 24) as u8;
+            frame[i+1] = (color >> 16) as u8;
+            frame[i+2] = (color >> 8) as u8;
+            frame[i+3] = (color) as u8;
+        }
+    }
+}
+
+pub fn clear_depth(depth: &mut [f32]) {
+    for x in 0..WIDTH as i32 {
+        for y in 0..HEIGHT as i32 {
+            let i = (((HEIGHT as i32 - 1 - y) * WIDTH as i32 + x) * 4) as usize;
+            depth[i/4] = FAR;
+        }
+    }
+}
+
+pub fn clear_fade(frame: &mut [u8], f: f32) {
+    for x in 0..WIDTH as i32 {
+        for y in 0..HEIGHT as i32 {
+            let i = (((HEIGHT as i32 - 1 - y) * WIDTH as i32 + x) * 4) as usize;
+
+            let mut color = 0x00000000;
+            color |= (frame[i] as u32) << 24;
+            color |= (frame[i+1] as u32) << 16;
+            color |= (frame[i+2] as u32) << 8;
+            color |= frame[i+3] as u32;
+
+            let c = color_to_float(color);
+            color = float_to_color((c.0 * f, c.1 * f, c.2 * f, c.3));
+
             frame[i] = (color >> 24) as u8;
             frame[i+1] = (color >> 16) as u8;
             frame[i+2] = (color >> 8) as u8;
