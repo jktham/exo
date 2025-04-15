@@ -28,7 +28,10 @@ pub struct Ship {
     pub angular_acceleration: Quat,
     pub thrust: EnumMap<Thrust, f32>,
     pub boost: f32,
+    pub boost_cooldown: f32,
     pub jumping: bool,
+    pub charging_jump: bool,
+    pub jump_charge: f32,
     pub brake: bool,
     pub hull: Object,
     pub thrusters: EnumMap<Thrust, Object>,
@@ -89,8 +92,11 @@ impl Game {
                 angular_acceleration: Quat::IDENTITY,
                 thrust: enum_map! {_ => 0.0},
                 boost: 0.0,
+                boost_cooldown: 0.0,
                 brake: false,
                 jumping: false,
+                charging_jump: false,
+                jump_charge: -1.0,
                 hull: Object {
                     mesh: hull_mesh(),
                     model: Mat4::IDENTITY,
@@ -209,8 +215,8 @@ impl Game {
         draw_rectangle_fill(frame, depth, Vec3::new(0.0, 21.0, 0.0), Vec3::new(20.0, 27.0, 0.0), if self.ship.boost > 0.0 {0xffffffff} else {0x000000ff});
         draw_text(frame, depth, Vec3::new(1.0, 22.0, 0.0), "TAB", &FONT_5PX, 7, 1, if self.ship.boost > 0.0 {0x000000ff} else {0xffffffff});
 
-        draw_rectangle_fill(frame, depth, Vec3::new(0.0, 0.0, 0.0), Vec3::new(20.0, 6.0, 0.0), if self.ship.jumping {0xffffffff} else {0x000000ff});
-        draw_text(frame, depth, Vec3::new(1.0, 1.0, 0.0), "ALT", &FONT_5PX, 7, 1, if self.ship.jumping {0x000000ff} else {0xffffffff});
+        draw_rectangle_fill(frame, depth, Vec3::new(0.0, 0.0, 0.0), Vec3::new(20.0, 6.0, 0.0), if self.ship.jumping || self.ship.charging_jump {0xffffffff} else {0x000000ff});
+        draw_text(frame, depth, Vec3::new(1.0, 1.0, 0.0), "ALT", &FONT_5PX, 7, 1, if self.ship.jumping|| self.ship.charging_jump {0x000000ff} else {0xffffffff});
     
         draw_text(frame, depth, Vec3::new(1.0, (HEIGHT - 6) as f32, 0.0), &(f32::round(dt * 1000.0) / 1000.0).to_string(), &FONT_5PX, 6, 1, 0xffffffff);
 
@@ -218,10 +224,36 @@ impl Game {
         let acceleration = format!("{:.3} m/s^2", f32::round(self.ship.acceleration.length() * 1000.0) / 1000.0);
         draw_text(frame, depth, Vec3::new(WIDTH as f32 - (velocity.len() * 6) as f32, 8.0, 0.0), &velocity, &FONT_5PX, 6, 1, 0xffffffff);
         draw_text(frame, depth, Vec3::new(WIDTH as f32 - (acceleration.len() * 6) as f32, 1.0, 0.0), &acceleration, &FONT_5PX, 6, 1, 0xffffffff);
+
+        let boost_cooldown = format!("{:.2}", f32::round(self.ship.boost_cooldown * 100.0) / 100.0);
+        draw_rectangle_fill(frame, depth, Vec3::new(28.0, 21.0, 0.0), Vec3::new(55.0, 27.0, 0.0), if self.ship.boost_cooldown > 0.0 {0xffffffff} else {0x000000ff});
+        draw_text(frame, depth, Vec3::new(57.0 as f32 - (boost_cooldown.len() * 7) as f32, 22.0, 0.0), &boost_cooldown, &FONT_5PX, 7, 1, if self.ship.boost_cooldown > 0.0 {0x000000ff} else {0xffffffff});
+
+        if self.ship.charging_jump {
+            let jump_charge = if self.ship.jump_charge < 1.0 {
+                format!(">>> {:.2} <<<", f32::round(self.ship.jump_charge * 100.0) / 100.0)
+            } else if self.ship.jump_charge < 2.0 {
+                format!(">>  {:.2}  <<", f32::round(self.ship.jump_charge * 100.0) / 100.0)
+            } else {
+                format!(">   {:.2}   <", f32::round(self.ship.jump_charge * 100.0) / 100.0)
+            };
+            draw_text(frame, depth, Vec3::new(WIDTH as f32 / 2.0 + 48.0 + 96.0 - (jump_charge.len() * 6*4) as f32, HEIGHT as f32 - 48.0, 0.0), &jump_charge, &FONT_5PX, 6, 4, 0xffffffff);
+        }
     }
 }
 
 pub fn update_ship_movement(ship: &mut Ship, dt: f32) {
+    if ship.charging_jump {
+        ship.brake = true;
+        ship.jump_charge = f32::max(0.0, ship.jump_charge - dt);
+        ship.thrust[Thrust::Front] = 80.0;
+        if ship.jump_charge == 0.0 {
+            ship.charging_jump = false;
+            ship.jumping = true;
+            start_jump(ship, dt);
+        }
+    }
+
     if ship.brake {
         let angular_brake_thrust = Vec3::from(ship.angular_velocity.inverse().to_euler(glam::EulerRot::XYZ)) * 200.0;
         if ship.thrust[Thrust::PitchUp] == 0.0 && ship.thrust[Thrust::PitchDown] == 0.0 {ship.thrust[Thrust::PitchUp] = f32::clamp(angular_brake_thrust.x, 0.0, 5.0);}
@@ -257,6 +289,7 @@ pub fn update_ship_movement(ship: &mut Ship, dt: f32) {
 
     ship.thrust[Thrust::Front] += ship.boost;
     ship.boost = f32::max(0.0, ship.boost - 800.0 * dt);
+    ship.boost_cooldown = f32::max(0.0, ship.boost_cooldown - dt);
     
     ship.acceleration = ship.rotation * Vec3::new(
         ship.thrust[Thrust::Right] - ship.thrust[Thrust::Left],
@@ -368,7 +401,7 @@ pub fn create_thrusters() -> EnumMap<Thrust, Object> {
 pub fn add_exhaust_particles(particles: &mut Vec<Particle>, ship: &Ship, dt: f32) {
     let acceleration_factor = f32::clamp(ship.acceleration.length() / 100.0, 0.0, 1.0);
     let velocity_factor = f32::clamp(ship.velocity.length() / 200.0, 0.1, 1.0);
-    let particle_strength = (acceleration_factor * 2.0 + velocity_factor) / 3.0;
+    let particle_strength = if !ship.jumping {(acceleration_factor * 2.0 + velocity_factor) / 3.0} else {1.0};
 
     let thruster_positions = vec![
         Vec3::new(-2.3, 0.0, 3.0),

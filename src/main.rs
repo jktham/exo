@@ -217,14 +217,20 @@ async fn run() {
             } else {
                 game.ship.brake = false;
             }
-            if input.key_pressed(KeyCode::Tab) && !game.ship.jumping {
+            if input.key_pressed(KeyCode::Tab) && !game.ship.jumping && game.ship.boost_cooldown == 0.0 {
                 game.ship.boost = 400.0;
+                game.ship.boost_cooldown = 1.0;
             }
             if input.key_pressed(KeyCode::AltLeft) {
-                game.ship.jumping = !game.ship.jumping;
-                match game.ship.jumping {
-                    true => start_jump(&mut game.ship, dt),
-                    false => end_jump(&mut game.ship),
+                if !game.ship.jumping {
+                    game.ship.charging_jump = !game.ship.charging_jump;
+                    game.ship.jump_charge = match game.ship.charging_jump {
+                        true => 3.0,
+                        false => 0.0,
+                    }
+                } else {
+                    game.ship.jumping = false;
+                    end_jump(&mut game.ship);
                 }
             }
         }
