@@ -177,40 +177,40 @@ async fn run() {
 
             game.ship.thrust = enum_map! {_ => 0.0};
             if input.key_held(KeyCode::KeyA) {
-                game.ship.thrust[Thrust::Left] = 20.0;
+                game.ship.thrust[Thrust::Left] = game.ship.stats.thrust;
             }
             if input.key_held(KeyCode::KeyD) {
-                game.ship.thrust[Thrust::Right] = 20.0;
+                game.ship.thrust[Thrust::Right] = game.ship.stats.thrust;
             }
             if input.key_held(KeyCode::KeyR) {
-                game.ship.thrust[Thrust::Up] = 20.0;
+                game.ship.thrust[Thrust::Up] = game.ship.stats.thrust;
             }
             if input.key_held(KeyCode::KeyF) {
-                game.ship.thrust[Thrust::Down] = 20.0;
+                game.ship.thrust[Thrust::Down] = game.ship.stats.thrust;
             }
             if input.key_held(KeyCode::KeyW) {
-                game.ship.thrust[Thrust::Front] = 40.0;
+                game.ship.thrust[Thrust::Front] = 2.0 * game.ship.stats.thrust;
             }
             if input.key_held(KeyCode::KeyS) {
-                game.ship.thrust[Thrust::Back] = 20.0;
+                game.ship.thrust[Thrust::Back] = game.ship.stats.thrust;
             }
             if input.key_held(KeyCode::KeyJ) {
-                game.ship.thrust[Thrust::YawLeft] = 5.0;
+                game.ship.thrust[Thrust::YawLeft] = game.ship.stats.angular_thrust;
             }
             if input.key_held(KeyCode::KeyL) {
-                game.ship.thrust[Thrust::YawRight] = 5.0;
+                game.ship.thrust[Thrust::YawRight] = game.ship.stats.angular_thrust;
             }
             if input.key_held(KeyCode::KeyI) {
-                game.ship.thrust[Thrust::PitchDown] = 5.0;
+                game.ship.thrust[Thrust::PitchDown] = game.ship.stats.angular_thrust;
             }
             if input.key_held(KeyCode::KeyK) {
-                game.ship.thrust[Thrust::PitchUp] = 5.0;
+                game.ship.thrust[Thrust::PitchUp] = game.ship.stats.angular_thrust;
             }
             if input.key_held(KeyCode::KeyU) {
-                game.ship.thrust[Thrust::RollCCW] = 5.0;
+                game.ship.thrust[Thrust::RollCCW] = game.ship.stats.angular_thrust;
             }
             if input.key_held(KeyCode::KeyO) {
-                game.ship.thrust[Thrust::RollCW] = 5.0;
+                game.ship.thrust[Thrust::RollCW] = game.ship.stats.angular_thrust;
             }
             if input.key_held(KeyCode::Space) && !game.ship.jumping {
                 game.ship.brake = true;
@@ -218,14 +218,14 @@ async fn run() {
                 game.ship.brake = false;
             }
             if input.key_pressed(KeyCode::Tab) && !game.ship.jumping && game.ship.boost_cooldown == 0.0 {
-                game.ship.boost = 400.0;
-                game.ship.boost_cooldown = 1.0;
+                game.ship.boost = game.ship.stats.boost_strength;
+                game.ship.boost_cooldown = game.ship.stats.boost_cooldown;
             }
             if input.key_pressed(KeyCode::AltLeft) {
                 if !game.ship.jumping {
                     game.ship.charging_jump = !game.ship.charging_jump;
                     game.ship.jump_charge = match game.ship.charging_jump {
-                        true => 3.0,
+                        true => game.ship.stats.jump_charge,
                         false => 0.0,
                     }
                 } else {

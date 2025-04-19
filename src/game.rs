@@ -37,6 +37,17 @@ pub struct Ship {
     pub brake: bool,
     pub hull: Object,
     pub thrusters: EnumMap<Thrust, Object>,
+    pub stats: ShipStats,
+}
+
+pub struct ShipStats {
+    pub thrust: f64,
+    pub angular_thrust: f64,
+    pub boost_strength: f64,
+    pub boost_duration: f64,
+    pub boost_cooldown: f64,
+    pub jump_speed: f64,
+    pub jump_charge: f64,
 }
 
 #[derive(Enum)]
@@ -106,6 +117,15 @@ impl Game {
                     fill: 0x000000ff,
                 },
                 thrusters: create_thrusters(),
+                stats: ShipStats {
+                    thrust: 40.0,
+                    angular_thrust: 5.0,
+                    boost_strength: 800.0,
+                    boost_duration: 0.5,
+                    boost_cooldown: 1.0,
+                    jump_speed: 18000.0,
+                    jump_charge: 3.0,
+                },
             },
             camera: Camera {
                 position: DVec3::ZERO,
@@ -232,12 +252,14 @@ impl Game {
         draw_text(frame, depth, DVec3::new(57.0 as f64 - (boost_cooldown.len() * 7) as f64, 22.0, 0.0), &boost_cooldown, &FONT_5PX, 7, 1, if self.ship.boost_cooldown > 0.0 {0x000000ff} else {0xffffffff});
 
         if self.ship.charging_jump {
-            let jump_charge = if self.ship.jump_charge < 1.0 {
+            let jump_charge = if self.ship.jump_charge <= 1.0 {
                 format!(">>> {:.2} <<<", f64::round(self.ship.jump_charge * 100.0) / 100.0)
-            } else if self.ship.jump_charge < 2.0 {
+            } else if self.ship.jump_charge <= 2.0 {
                 format!(">>  {:.2}  <<", f64::round(self.ship.jump_charge * 100.0) / 100.0)
-            } else {
+            } else if self.ship.jump_charge <= 3.0 {
                 format!(">   {:.2}   <", f64::round(self.ship.jump_charge * 100.0) / 100.0)
+            } else {
+                format!("    {:.2}    ", f64::round(self.ship.jump_charge * 100.0) / 100.0)
             };
             draw_text(frame, depth, DVec3::new(WIDTH as f64 / 2.0 + 48.0 + 96.0 - (jump_charge.len() * 6*4) as f64, HEIGHT as f64 - 48.0, 0.0), &jump_charge, &FONT_5PX, 6, 4, 0xffffffff);
         }
@@ -248,7 +270,7 @@ pub fn update_ship_movement(ship: &mut Ship, dt: f64) {
     if ship.charging_jump {
         ship.brake = true;
         ship.jump_charge = f64::max(0.0, ship.jump_charge - dt);
-        ship.thrust[Thrust::Front] = 80.0;
+        ship.thrust[Thrust::Front] = 2.0 * ship.stats.thrust;
         if ship.jump_charge == 0.0 {
             ship.charging_jump = false;
             ship.jumping = true;
@@ -258,20 +280,20 @@ pub fn update_ship_movement(ship: &mut Ship, dt: f64) {
 
     if ship.brake {
         let angular_brake_thrust = DVec3::from(ship.angular_velocity.inverse().to_euler(glam::EulerRot::XYZ)) * 200.0;
-        if ship.thrust[Thrust::PitchUp] == 0.0 && ship.thrust[Thrust::PitchDown] == 0.0 {ship.thrust[Thrust::PitchUp] = f64::clamp(angular_brake_thrust.x, 0.0, 5.0);}
-        if ship.thrust[Thrust::PitchUp] == 0.0 && ship.thrust[Thrust::PitchDown] == 0.0 {ship.thrust[Thrust::PitchDown] = f64::clamp(-angular_brake_thrust.x, 0.0, 5.0);}
-        if ship.thrust[Thrust::YawLeft] == 0.0 && ship.thrust[Thrust::YawRight] == 0.0 {ship.thrust[Thrust::YawLeft] = f64::clamp(angular_brake_thrust.y, 0.0, 5.0);}
-        if ship.thrust[Thrust::YawLeft] == 0.0 && ship.thrust[Thrust::YawRight] == 0.0 {ship.thrust[Thrust::YawRight] = f64::clamp(-angular_brake_thrust.y, 0.0, 5.0);}
-        if ship.thrust[Thrust::RollCCW] == 0.0 && ship.thrust[Thrust::RollCW] == 0.0 {ship.thrust[Thrust::RollCCW] = f64::clamp(angular_brake_thrust.z, 0.0, 5.0);}
-        if ship.thrust[Thrust::RollCCW] == 0.0 && ship.thrust[Thrust::RollCW] == 0.0 {ship.thrust[Thrust::RollCW] = f64::clamp(-angular_brake_thrust.z, 0.0, 5.0);}
+        if ship.thrust[Thrust::PitchUp] == 0.0 && ship.thrust[Thrust::PitchDown] == 0.0 {ship.thrust[Thrust::PitchUp] = f64::clamp(angular_brake_thrust.x, 0.0, ship.stats.angular_thrust);}
+        if ship.thrust[Thrust::PitchUp] == 0.0 && ship.thrust[Thrust::PitchDown] == 0.0 {ship.thrust[Thrust::PitchDown] = f64::clamp(-angular_brake_thrust.x, 0.0, ship.stats.angular_thrust);}
+        if ship.thrust[Thrust::YawLeft] == 0.0 && ship.thrust[Thrust::YawRight] == 0.0 {ship.thrust[Thrust::YawLeft] = f64::clamp(angular_brake_thrust.y, 0.0, ship.stats.angular_thrust);}
+        if ship.thrust[Thrust::YawLeft] == 0.0 && ship.thrust[Thrust::YawRight] == 0.0 {ship.thrust[Thrust::YawRight] = f64::clamp(-angular_brake_thrust.y, 0.0, ship.stats.angular_thrust);}
+        if ship.thrust[Thrust::RollCCW] == 0.0 && ship.thrust[Thrust::RollCW] == 0.0 {ship.thrust[Thrust::RollCCW] = f64::clamp(angular_brake_thrust.z, 0.0, ship.stats.angular_thrust);}
+        if ship.thrust[Thrust::RollCCW] == 0.0 && ship.thrust[Thrust::RollCW] == 0.0 {ship.thrust[Thrust::RollCW] = f64::clamp(-angular_brake_thrust.z, 0.0, ship.stats.angular_thrust);}
 
         let brake_thrust = ship.rotation.inverse() * ship.velocity * 10.0;
-        if ship.thrust[Thrust::Right] == 0.0 && ship.thrust[Thrust::Left] == 0.0 {ship.thrust[Thrust::Right] = f64::clamp(-brake_thrust.x, 0.0, 20.0);}
-        if ship.thrust[Thrust::Right] == 0.0 && ship.thrust[Thrust::Left] == 0.0 {ship.thrust[Thrust::Left] = f64::clamp(brake_thrust.x, 0.0, 20.0);}
-        if ship.thrust[Thrust::Up] == 0.0 && ship.thrust[Thrust::Down] == 0.0 {ship.thrust[Thrust::Up] = f64::clamp(-brake_thrust.y, 0.0, 20.0);}
-        if ship.thrust[Thrust::Up] == 0.0 && ship.thrust[Thrust::Down] == 0.0 {ship.thrust[Thrust::Down] = f64::clamp(brake_thrust.y, 0.0, 20.0);}
-        if ship.thrust[Thrust::Back] == 0.0 && ship.thrust[Thrust::Front] == 0.0 {ship.thrust[Thrust::Back] = f64::clamp(-brake_thrust.z, 0.0, 20.0);}
-        if ship.thrust[Thrust::Back] == 0.0 && ship.thrust[Thrust::Front] == 0.0 {ship.thrust[Thrust::Front] = f64::clamp(brake_thrust.z, 0.0, 40.0);}
+        if ship.thrust[Thrust::Right] == 0.0 && ship.thrust[Thrust::Left] == 0.0 {ship.thrust[Thrust::Right] = f64::clamp(-brake_thrust.x, 0.0, ship.stats.thrust);}
+        if ship.thrust[Thrust::Right] == 0.0 && ship.thrust[Thrust::Left] == 0.0 {ship.thrust[Thrust::Left] = f64::clamp(brake_thrust.x, 0.0, ship.stats.thrust);}
+        if ship.thrust[Thrust::Up] == 0.0 && ship.thrust[Thrust::Down] == 0.0 {ship.thrust[Thrust::Up] = f64::clamp(-brake_thrust.y, 0.0, ship.stats.thrust);}
+        if ship.thrust[Thrust::Up] == 0.0 && ship.thrust[Thrust::Down] == 0.0 {ship.thrust[Thrust::Down] = f64::clamp(brake_thrust.y, 0.0, ship.stats.thrust);}
+        if ship.thrust[Thrust::Back] == 0.0 && ship.thrust[Thrust::Front] == 0.0 {ship.thrust[Thrust::Back] = f64::clamp(-brake_thrust.z, 0.0, ship.stats.thrust);}
+        if ship.thrust[Thrust::Back] == 0.0 && ship.thrust[Thrust::Front] == 0.0 {ship.thrust[Thrust::Front] = f64::clamp(brake_thrust.z, 0.0, 2.0 * ship.stats.thrust);}
     }
 
     if ship.jumping {
@@ -290,7 +312,7 @@ pub fn update_ship_movement(ship: &mut Ship, dt: f64) {
     ship.rotation *= ship.angular_velocity;
 
     ship.thrust[Thrust::Front] += ship.boost;
-    ship.boost = f64::max(0.0, ship.boost - 800.0 * dt);
+    ship.boost = f64::max(0.0, ship.boost - ship.stats.boost_strength / ship.stats.boost_duration * dt);
     ship.boost_cooldown = f64::max(0.0, ship.boost_cooldown - dt);
     
     ship.acceleration = ship.rotation * DVec3::new(
@@ -320,7 +342,7 @@ pub fn start_jump(ship: &mut Ship, dt: f64) {
         _ => 0.0,
     };
     ship.angular_velocity = DQuat::from_euler(glam::EulerRot::XYZ, 0.0, 0.0, 1.0 * dt);
-    ship.velocity = ship.rotation * DVec3::new(0.0, 0.0, -10000.0);
+    ship.velocity = ship.rotation * DVec3::new(0.0, 0.0, -ship.stats.jump_speed);
 }
 
 pub fn end_jump(ship: &mut Ship) {
