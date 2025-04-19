@@ -1,16 +1,16 @@
 #![allow(dead_code)]
 
-use glam::Vec3;
+use glam::DVec3;
 use regex::Regex;
 
-pub fn parse_obj(obj_string: &str) -> Vec<Vec<Vec3>> {
+pub fn parse_obj(obj_string: &str) -> Vec<Vec<DVec3>> {
 	let mut vertices = Vec::new();
 	let mut faces = Vec::new();
 	for line in obj_string.lines() {
         if line.starts_with("v ") {
 			let re = Regex::new(r"v\s([\d\.-]*)\s([\d\.-]*)\s([\d\.-]*)").unwrap();
 			let vertex = re.captures(line).unwrap();
-			vertices.push(Vec3::new(vertex[1].parse().unwrap(), vertex[2].parse().unwrap(), vertex[3].parse().unwrap()));
+			vertices.push(DVec3::new(vertex[1].parse().unwrap(), vertex[2].parse().unwrap(), vertex[3].parse().unwrap()));
 		}
 		if line.starts_with("f ") {
 			let mut face = Vec::new();
@@ -27,141 +27,141 @@ pub fn parse_obj(obj_string: &str) -> Vec<Vec<Vec3>> {
 	faces
 }
 
-pub fn hull_mesh() -> Vec<Vec<Vec3>> {
+pub fn hull_mesh() -> Vec<Vec<DVec3>> {
 	vec![
 		vec![
-			Vec3::new(-2.0, -1.0, 2.0), // stern BL
-			Vec3::new(2.0, -1.0, 2.0), // stern BR
-			Vec3::new(4.0, 0.0, 2.0), // stern R
-			Vec3::new(2.0, 1.0, 2.0), // stern TR
-			Vec3::new(-2.0, 1.0, 2.0), // stern TL
-			Vec3::new(-4.0, 0.0, 2.0), // stern L
+			DVec3::new(-2.0, -1.0, 2.0), // stern BL
+			DVec3::new(2.0, -1.0, 2.0), // stern BR
+			DVec3::new(4.0, 0.0, 2.0), // stern R
+			DVec3::new(2.0, 1.0, 2.0), // stern TR
+			DVec3::new(-2.0, 1.0, 2.0), // stern TL
+			DVec3::new(-4.0, 0.0, 2.0), // stern L
 		],
 		vec![
-			Vec3::new(-3.0, 0.0, 0.0), // mid L
-			Vec3::new(0.0, 1.0, 0.0), // mid T
-			Vec3::new(3.0, 0.0, 0.0), // mid R
-			Vec3::new(0.0, -1.0, 0.0), // mid B
+			DVec3::new(-3.0, 0.0, 0.0), // mid L
+			DVec3::new(0.0, 1.0, 0.0), // mid T
+			DVec3::new(3.0, 0.0, 0.0), // mid R
+			DVec3::new(0.0, -1.0, 0.0), // mid B
 		],
 		vec![
-			Vec3::new(-2.0, -0.5, 2.1), // thruster LBR
-			Vec3::new(-2.0, 0.5, 2.1), // thruster LTR
-			Vec3::new(-3.0, 0.0, 2.1), // thruster LL
+			DVec3::new(-2.0, -0.5, 2.1), // thruster LBR
+			DVec3::new(-2.0, 0.5, 2.1), // thruster LTR
+			DVec3::new(-3.0, 0.0, 2.1), // thruster LL
 		],
 		vec![
-			Vec3::new(2.0, 0.5, 2.1), // thruster RTL
-			Vec3::new(2.0, -0.5, 2.1), // thruster RBL
-			Vec3::new(3.0, 0.0, 2.1), // thruster RR
+			DVec3::new(2.0, 0.5, 2.1), // thruster RTL
+			DVec3::new(2.0, -0.5, 2.1), // thruster RBL
+			DVec3::new(3.0, 0.0, 2.1), // thruster RR
 		],
 		vec![
-			Vec3::new(-2.0, 1.0, 2.0), // stern TL
-			Vec3::new(2.0, 1.0, 2.0), // stern TR
-			Vec3::new(0.0, 1.0, 0.0), // mid T
+			DVec3::new(-2.0, 1.0, 2.0), // stern TL
+			DVec3::new(2.0, 1.0, 2.0), // stern TR
+			DVec3::new(0.0, 1.0, 0.0), // mid T
 		],
 		vec![
-			Vec3::new(2.0, -1.0, 2.0), // stern BR
-			Vec3::new(-2.0, -1.0, 2.0), // stern BL
-			Vec3::new(0.0, -1.0, 0.0), // mid B
+			DVec3::new(2.0, -1.0, 2.0), // stern BR
+			DVec3::new(-2.0, -1.0, 2.0), // stern BL
+			DVec3::new(0.0, -1.0, 0.0), // mid B
 		],
 		vec![
-			Vec3::new(3.0, 0.0, 0.0), // mid R
-			Vec3::new(0.0, 1.0, 0.0), // mid T
-			Vec3::new(2.0, 1.0, 2.0), // stern TR
+			DVec3::new(3.0, 0.0, 0.0), // mid R
+			DVec3::new(0.0, 1.0, 0.0), // mid T
+			DVec3::new(2.0, 1.0, 2.0), // stern TR
 		],
 		vec![
-			Vec3::new(0.0, -1.0, 0.0), // mid B
-			Vec3::new(3.0, 0.0, 0.0), // mid R
-			Vec3::new(2.0, -1.0, 2.0), // stern BR
+			DVec3::new(0.0, -1.0, 0.0), // mid B
+			DVec3::new(3.0, 0.0, 0.0), // mid R
+			DVec3::new(2.0, -1.0, 2.0), // stern BR
 		],
 		vec![
-			Vec3::new(0.0, 1.0, 0.0), // mid T
-			Vec3::new(-3.0, 0.0, 0.0), // mid L
-			Vec3::new(-2.0, 1.0, 2.0), // stern TL
+			DVec3::new(0.0, 1.0, 0.0), // mid T
+			DVec3::new(-3.0, 0.0, 0.0), // mid L
+			DVec3::new(-2.0, 1.0, 2.0), // stern TL
 		],
 		vec![
-			Vec3::new(-3.0, 0.0, 0.0), // mid L
-			Vec3::new(0.0, -1.0, 0.0), // mid B
-			Vec3::new(-2.0, -1.0, 2.0), // stern BL
+			DVec3::new(-3.0, 0.0, 0.0), // mid L
+			DVec3::new(0.0, -1.0, 0.0), // mid B
+			DVec3::new(-2.0, -1.0, 2.0), // stern BL
 		],
 		vec![
-			Vec3::new(-4.0, 0.0, 2.0), // stern L
-			Vec3::new(-2.0, 1.0, 2.0), // stern TL
-			Vec3::new(-3.0, 0.0, 0.0), // mid L
+			DVec3::new(-4.0, 0.0, 2.0), // stern L
+			DVec3::new(-2.0, 1.0, 2.0), // stern TL
+			DVec3::new(-3.0, 0.0, 0.0), // mid L
 		],
 		vec![
-			Vec3::new(2.0, 1.0, 2.0), // stern TR
-			Vec3::new(4.0, 0.0, 2.0), // stern R
-			Vec3::new(3.0, 0.0, 0.0), // mid R
+			DVec3::new(2.0, 1.0, 2.0), // stern TR
+			DVec3::new(4.0, 0.0, 2.0), // stern R
+			DVec3::new(3.0, 0.0, 0.0), // mid R
 		],
 		vec![
-			Vec3::new(4.0, 0.0, 2.0), // stern R
-			Vec3::new(2.0, -1.0, 2.0), // stern BR
-			Vec3::new(3.0, 0.0, 0.0), // mid R
+			DVec3::new(4.0, 0.0, 2.0), // stern R
+			DVec3::new(2.0, -1.0, 2.0), // stern BR
+			DVec3::new(3.0, 0.0, 0.0), // mid R
 		],
 		vec![
-			Vec3::new(-2.0, -1.0, 2.0), // stern BL
-			Vec3::new(-4.0, 0.0, 2.0), // stern L
-			Vec3::new(-3.0, 0.0, 0.0), // mid L
+			DVec3::new(-2.0, -1.0, 2.0), // stern BL
+			DVec3::new(-4.0, 0.0, 2.0), // stern L
+			DVec3::new(-3.0, 0.0, 0.0), // mid L
 		],
 		vec![
-			Vec3::new(-3.0, 0.0, 0.0), // mid L
-			Vec3::new(0.0, 1.0, 0.0), // mid T
-			Vec3::new(0.0, 0.0, -2.0), // bow C
+			DVec3::new(-3.0, 0.0, 0.0), // mid L
+			DVec3::new(0.0, 1.0, 0.0), // mid T
+			DVec3::new(0.0, 0.0, -2.0), // bow C
 		],
 		vec![
-			Vec3::new(0.0, 1.0, 0.0), // mid T
-			Vec3::new(3.0, 0.0, 0.0), // mid R
-			Vec3::new(0.0, 0.0, -2.0), // bow C
+			DVec3::new(0.0, 1.0, 0.0), // mid T
+			DVec3::new(3.0, 0.0, 0.0), // mid R
+			DVec3::new(0.0, 0.0, -2.0), // bow C
 		],
 		vec![
-			Vec3::new(3.0, 0.0, 0.0), // mid R
-			Vec3::new(0.0, -1.0, 0.0), // mid B
-			Vec3::new(0.0, 0.0, -2.0), // bow C
+			DVec3::new(3.0, 0.0, 0.0), // mid R
+			DVec3::new(0.0, -1.0, 0.0), // mid B
+			DVec3::new(0.0, 0.0, -2.0), // bow C
 		],
 		vec![
-			Vec3::new(0.0, -1.0, 0.0), // mid B
-			Vec3::new(-3.0, 0.0, 0.0), // mid L
-			Vec3::new(0.0, 0.0, -2.0), // bow C
+			DVec3::new(0.0, -1.0, 0.0), // mid B
+			DVec3::new(-3.0, 0.0, 0.0), // mid L
+			DVec3::new(0.0, 0.0, -2.0), // bow C
 		],
 	]
 }
 
-pub fn front_thruster_mesh() -> Vec<Vec<Vec3>> {
+pub fn front_thruster_mesh() -> Vec<Vec<DVec3>> {
 	vec![
 		vec![
-			Vec3::new(-2.0, -0.5, 2.1), // thruster LBR
-			Vec3::new(-2.0, 0.5, 2.1), // thruster LTR
-			Vec3::new(-3.0, 0.0, 2.1), // thruster LL
+			DVec3::new(-2.0, -0.5, 2.1), // thruster LBR
+			DVec3::new(-2.0, 0.5, 2.1), // thruster LTR
+			DVec3::new(-3.0, 0.0, 2.1), // thruster LL
 		],
 		vec![
-			Vec3::new(2.0, 0.5, 2.1), // thruster RTL
-			Vec3::new(2.0, -0.5, 2.1), // thruster RBL
-			Vec3::new(3.0, 0.0, 2.1), // thruster RR
+			DVec3::new(2.0, 0.5, 2.1), // thruster RTL
+			DVec3::new(2.0, -0.5, 2.1), // thruster RBL
+			DVec3::new(3.0, 0.0, 2.1), // thruster RR
 		],
 	]
 }
 
-pub fn asteroid_mesh() -> Vec<Vec<Vec3>> {
+pub fn asteroid_mesh() -> Vec<Vec<DVec3>> {
 	vec![
 		vec![
-			Vec3::new(0.0, 1.0, -0.7),
-			Vec3::new(-1.0, 0.0, 0.7),
-			Vec3::new(1.0, 0.0, 0.7),
+			DVec3::new(0.0, 1.0, -0.7),
+			DVec3::new(-1.0, 0.0, 0.7),
+			DVec3::new(1.0, 0.0, 0.7),
 		],
 		vec![
-			Vec3::new(0.0, -1.0, -0.7),
-			Vec3::new(-1.0, 0.0, 0.7),
-			Vec3::new(1.0, 0.0, 0.7),
+			DVec3::new(0.0, -1.0, -0.7),
+			DVec3::new(-1.0, 0.0, 0.7),
+			DVec3::new(1.0, 0.0, 0.7),
 		],
 		vec![
-			Vec3::new(0.0, -1.0, -0.7),
-			Vec3::new(0.0, 1.0, -0.7),
-			Vec3::new(1.0, 0.0, 0.7),
+			DVec3::new(0.0, -1.0, -0.7),
+			DVec3::new(0.0, 1.0, -0.7),
+			DVec3::new(1.0, 0.0, 0.7),
 		],
 		vec![
-			Vec3::new(0.0, -1.0, -0.7),
-			Vec3::new(0.0, 1.0, -0.7),
-			Vec3::new(-1.0, 0.0, 0.7),
+			DVec3::new(0.0, -1.0, -0.7),
+			DVec3::new(0.0, 1.0, -0.7),
+			DVec3::new(-1.0, 0.0, 0.7),
 		],
 	]
 }

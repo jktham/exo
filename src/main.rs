@@ -127,7 +127,7 @@ async fn run() {
     };
     let mut game = Game::new();
 
-    let mut depth_buffer: [f32; (WIDTH*HEIGHT) as usize] = [10000.0; (WIDTH*HEIGHT) as usize];
+    let mut depth_buffer: [f64; (WIDTH*HEIGHT) as usize] = [10000.0; (WIDTH*HEIGHT) as usize];
 
     let mut t = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64();
     let mut dt = 0.0;
@@ -142,7 +142,7 @@ async fn run() {
                 game.update(dt);
 
                 // Draw the current frame
-                dt = (SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64() - t) as f32;
+                dt = (SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64() - t) as f64;
                 t = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64();
 
                 game.draw(pixels.frame_mut(), &mut depth_buffer, dt);
