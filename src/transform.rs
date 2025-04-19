@@ -3,7 +3,7 @@ use glam::{Vec3, Vec4, Mat4};
 use crate::{game::Camera, HEIGHT, WIDTH};
 
 pub const NEAR: f32 = 0.01;
-pub const FAR: f32 = 100000.0;
+pub const FAR: f32 = 1000000.0;
 
 pub fn transform_vertex(vertex: Vec3, model: Mat4) -> Vec3 {
 	model.transform_point3(vertex)
@@ -37,12 +37,11 @@ pub fn transform_world_to_screen(vertex: Vec3, camera: &Camera) -> Vec3 {
     let eye = camera.view * world;
     let clip = projection * eye;
     let ndc = Vec3::new(clip.x/clip.w, clip.y/clip.w, clip.z/clip.w);
-    let mut screen = Vec3::new(
+    let screen = Vec3::new(
         w/2.0 * ndc.x + w/2.0, 
         h/2.0 * ndc.y + h/2.0, 
         (f-n)/2.0 * ndc.z + (f+n)/2.0
     );
-    screen.z /= f;
 
     screen
 }
@@ -52,5 +51,7 @@ pub fn out_of_bounds(p: Vec3, tolerance: i32) -> bool {
     (p.x as i32) >= WIDTH as i32 + tolerance || 
     (p.y as i32) < 0 - tolerance || 
     (p.y as i32) >= HEIGHT as i32 + tolerance ||
-    p.z > 1.0
+    // p.z < NEAR ||
+    p.z < 0.0 ||
+    p.z > FAR
 }

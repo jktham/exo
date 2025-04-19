@@ -335,7 +335,15 @@ pub fn draw_mesh_3d(frame: &mut [u8], depth: &mut [f32], mesh: &Vec<Vec<Vec3>>, 
 
 // todo: check bounding box
 pub fn draw_object(frame: &mut [u8], depth: &mut [f32], object: &Object, camera: &Camera) {
-    draw_mesh_3d(frame, depth, &transform_mesh(&object.mesh, object.model), camera, object.color, object.fill);
+    let (scale, _, _) = object.model.to_scale_rotation_translation(); // todo: dedicated lod properties
+    let distance = (object.model.transform_point3(Vec3::ZERO) - camera.model.transform_point3(Vec3::ZERO)).length();
+    if distance > 10000.0 && scale.x < 1000.0 {
+        draw_point_3d(frame, depth, object.model.transform_point3(Vec3::ZERO), camera, object.color);
+    } else if distance > 4000.0 && scale.x < 1000.0 {
+        draw_mesh_3d(frame, depth, &transform_mesh(&object.mesh, object.model), camera, object.color, 0x00000000);
+    } else {
+        draw_mesh_3d(frame, depth, &transform_mesh(&object.mesh, object.model), camera, object.color, object.fill);
+    }
 }
 
 pub fn color_to_float(color: u32) -> (f32, f32, f32, f32) {

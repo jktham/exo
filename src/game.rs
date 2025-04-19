@@ -1,4 +1,5 @@
 use std::f32::consts::PI;
+use std::rc::Rc;
 
 use enum_map::{enum_map, Enum, EnumMap};
 use glam::Quat;
@@ -6,6 +7,7 @@ use glam::{Mat4, Vec3};
 use rand::Rng;
 use rand_distr::StandardNormal;
 
+use crate::transform::FAR;
 use crate::{graphics::*, HEIGHT, WIDTH};
 use crate::sprites::*;
 use crate::meshes::*;
@@ -63,7 +65,7 @@ pub struct Camera {
 
 #[derive(Clone)]
 pub struct Object {
-    pub mesh: Vec<Vec<Vec3>>,
+    pub mesh: Rc<Vec<Vec<Vec3>>>,
     pub model: Mat4,
     pub color: u32,
     pub fill: u32,
@@ -98,7 +100,7 @@ impl Game {
                 charging_jump: false,
                 jump_charge: -1.0,
                 hull: Object {
-                    mesh: hull_mesh(),
+                    mesh: Rc::new(hull_mesh()),
                     model: Mat4::IDENTITY,
                     color: 0xffffffff,
                     fill: 0x000000ff,
@@ -163,7 +165,7 @@ impl Game {
         for dust in &self.dust {
             let trail = -self.ship.velocity * 0.005;
             if trail.length() > 0.1 {
-                draw_line_3d(frame, depth, dust.mesh[0][0], dust.mesh[0][0] + trail, &self.camera, dust.color);
+                draw_line_3d(frame, depth, dust.model.transform_point3(Vec3::ZERO), dust.model.transform_point3(Vec3::ZERO) + trail, &self.camera, dust.color);
             }
             draw_object(frame, depth, &dust, &self.camera);
         }
@@ -335,11 +337,11 @@ pub fn generate_stars() -> Vec<Object> {
             rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
             rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
             rand::rng().sample::<f32, StandardNormal>(StandardNormal),
-        ).normalize() * 1000.0;
+        ).normalize() * FAR / 2.0;
         let b = (rand::rng().random::<f32>() * 255.0) as u32 & 0xff;
         let col = (b << 24) | (b << 16) | (b << 8) | 0xff;
         stars.push(Object {
-            mesh: vec![vec![pos]],
+            mesh: Rc::new(vec![vec![pos]]),
             model: Mat4::IDENTITY,
             color: col,
             fill: 0x00000000,
@@ -352,22 +354,22 @@ pub fn update_dust(dust: &mut Vec<Object>, center: Vec3, first: bool) {
     let count: usize = 200;
     let (min_dist, max_dist): (f32, f32) = (90.0, 100.0);
 
-    dust.retain(|d| (d.mesh[0][0] - center).length() <= max_dist);
+    dust.retain(|d| (d.model.transform_point3(Vec3::ZERO) - center).length() <= max_dist);
     while dust.len() < count {
-        let pos = Vec3::new(
+        let offset = Vec3::new(
             rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
             rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
             rand::rng().sample::<f32, StandardNormal>(StandardNormal),
         ).normalize() * rand::rng().random_range(if first {0.0} else {min_dist.powf(3.0)}..=max_dist.powf(3.0)).powf(1.0/3.0);
         dust.push(Object {
-            mesh: vec![vec![center + pos]],
-            model: Mat4::IDENTITY,
+            mesh: Rc::new(vec![vec![Vec3::ZERO]]),
+            model: Mat4::from_translation(center + offset),
             color: 0xffffffff,
             fill: 0x00000000,
         });
     }
     for d in dust {
-        let brightness = f32::max(0.0, 1.0 - (d.mesh[0][0] - center).length() / min_dist);
+        let brightness = f32::max(0.0, 1.0 - (d.model.transform_point3(Vec3::ZERO) - center).length() / min_dist);
         d.color = float_to_color((brightness, brightness, brightness, 1.0));
     }
 }
@@ -383,13 +385,13 @@ pub fn create_thrusters() -> EnumMap<Thrust, Object> {
 
     let thrusters = enum_map! {
         Thrust::Front => Object {
-            mesh: front_thruster_mesh(),
+            mesh: Rc::new(front_thruster_mesh()),
             model: Mat4::IDENTITY,
             color: color,
             fill: 0x000000ff,
         },
         _ => Object {
-            mesh: vec![],
+            mesh: Rc::new(vec![]),
             model: Mat4::IDENTITY,
             color: color,
             fill: 0x00000000,
@@ -417,10 +419,11 @@ pub fn add_exhaust_particles(particles: &mut Vec<Particle>, ship: &Ship, dt: f32
 
         for pos in &thruster_positions {
             if rand::random::<f32>() < particle_strength {
+                let translation = ship.position + particle_offset + ship.rotation * *pos - ship.velocity * dt * rand::random::<f32>();
                 particles.push(Particle {
                     object: Object {
-                        mesh: vec![vec![ship.position + particle_offset + ship.rotation * *pos - ship.velocity * dt * rand::random::<f32>()]],
-                        model: Mat4::IDENTITY,
+                        mesh: Rc::new(vec![vec![Vec3::ZERO]]),
+                        model: Mat4::from_translation(translation),
                         color: 0xff00ffff,
                         fill: 0x00000000,
                     },
@@ -432,25 +435,37 @@ pub fn add_exhaust_particles(particles: &mut Vec<Particle>, ship: &Ship, dt: f32
 }
 
 pub fn generate_asteroids() -> Vec<Asteroid> {
-    let count = 200;
-    let (min_dist, max_dist): (f32, f32) = (100.0, 10000.0);
+    let count = 20000;
+    let (min_dist, max_dist): (f32, f32) = (60000.0, 120000.0);
     let (min_scale, max_scale): (f32, f32) = (1.0, 100.0);
-    let belt_plane_rotation = Mat4::from_axis_angle(Vec3::new(rand::random::<f32>(), rand::random::<f32>(), rand::random::<f32>()).normalize(), rand::random::<f32>() * PI);
-    let mesh = parse_obj(ASTEROID_OBJ);
+    let ring_plane_rotation = Mat4::from_axis_angle(Vec3::new(rand::random::<f32>(), rand::random::<f32>(), rand::random::<f32>()).normalize(), rand::random::<f32>() * PI);
+    let mesh = Rc::new(parse_obj(ASTEROID_OBJ));
+    let center = ring_plane_rotation.transform_point3(Vec3::new(0.0, 0.0, 100000.0));
 
-    let mut asteroids = Vec::with_capacity(100);
+    let mut asteroids = Vec::with_capacity(count);
+    let planet_scale = 20000.0;
+    asteroids.push(Asteroid {
+        object: Object {
+            mesh: mesh.clone(),
+            model: Mat4::from_translation(center) * Mat4::from_scale(Vec3::ONE * planet_scale),
+            color: 0xffffffff,
+            fill: 0x000000ff,
+        },
+        rotation_axis: ring_plane_rotation.transform_point3(Vec3::new(0.0, 1.0, 0.0)),
+        rotation_speed: 0.1,
+    });
     for _ in 0..count {
-        let pos = belt_plane_rotation.transform_point3(Vec3::new(
+        let offset = ring_plane_rotation.transform_point3((Vec3::new(
             rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
             rand::rng().sample::<f32, StandardNormal>(StandardNormal), 
             rand::rng().sample::<f32, StandardNormal>(StandardNormal),
-        ).normalize() * rand::rng().random_range(min_dist.powf(2.0)..max_dist.powf(2.0)).powf(1.0/2.0) * Vec3::new(1.0, 0.2, 1.0));
+        ) * Vec3::new(1.0, 0.01, 1.0)).normalize() * rand::rng().random_range(min_dist.powf(2.0)..max_dist.powf(2.0)).powf(1.0/2.0));
         let scale = rand::random_range(min_scale..max_scale);
 
         asteroids.push(Asteroid {
             object: Object {
                 mesh: mesh.clone(),
-                model: Mat4::from_translation(pos) * Mat4::from_scale(Vec3::new(scale, scale, scale)),
+                model: Mat4::from_translation(center + offset) * Mat4::from_scale(Vec3::ONE * scale),
                 color: 0xffffffff,
                 fill: 0x000000ff,
             },
