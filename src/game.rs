@@ -183,9 +183,11 @@ impl Game {
             draw_object(frame, depth, star, &self.camera);
         }
         for dust in &self.dust {
-            let trail = -self.ship.velocity * 0.005;
-            if trail.length() > 0.1 {
-                draw_line_3d(frame, depth, dust.model.transform_point3(DVec3::ZERO), dust.model.transform_point3(DVec3::ZERO) + trail, &self.camera, dust.color);
+            if self.ship.velocity.length() < self.ship.stats.jump_speed / 2.0 {
+                let trail = -self.ship.velocity * 0.005;
+                if trail.length() > 0.1 {
+                    draw_line_3d(frame, depth, dust.model.transform_point3(DVec3::ZERO), dust.model.transform_point3(DVec3::ZERO) + trail, &self.camera, dust.color);
+                }
             }
             draw_object(frame, depth, &dust, &self.camera);
         }
@@ -241,6 +243,7 @@ impl Game {
         draw_text(frame, depth, DVec3::new(1.0, 1.0, 0.0), "ALT", &FONT_5PX, 7, 1, if self.ship.jumping|| self.ship.charging_jump {0x000000ff} else {0xffffffff});
     
         draw_text(frame, depth, DVec3::new(1.0, (HEIGHT - 6) as f64, 0.0), &(f64::round(dt * 1000.0) / 1000.0).to_string(), &FONT_5PX, 6, 1, 0xffffffff);
+        draw_text(frame, depth, DVec3::new((WIDTH - 6 * 7) as f64, (HEIGHT - 6) as f64, 0.0), &"//exo83", &FONT_5PX, 6, 1, 0xffffffff);
 
         let velocity = format!("{:.3} m/s  ", f64::round(self.ship.velocity.length() * 1000.0) / 1000.0);
         let acceleration = format!("{:.3} m/s^2", f64::round(self.ship.acceleration.length() * 1000.0) / 1000.0);
@@ -462,13 +465,13 @@ pub fn generate_asteroids() -> Vec<Asteroid> {
     let (min_scale, max_scale): (f64, f64) = (1.0, 100.0);
     let ring_plane_rotation = DMat4::from_axis_angle(DVec3::new(rand::random::<f64>(), rand::random::<f64>(), rand::random::<f64>()).normalize(), rand::random::<f64>() * PI);
     let mesh = Rc::new(parse_obj(ASTEROID_OBJ));
-    let center = ring_plane_rotation.transform_point3(DVec3::new(0.0, 0.0, 100000.0));
+    let center = ring_plane_rotation.transform_point3(DVec3::new(0.0, 0.0, 1.0).normalize() * 100000.0);
 
-    let mut asteroids = Vec::with_capacity(count);
-    let planet_scale = 20000.0;
+    let mut asteroids = Vec::with_capacity(count+1);
+    let planet_scale = 30000.0;
     asteroids.push(Asteroid {
         object: Object {
-            mesh: mesh.clone(),
+            mesh: Rc::new(parse_obj(PLANET_OBJ)),
             model: DMat4::from_translation(center) * DMat4::from_scale(DVec3::ONE * planet_scale),
             color: 0xffffffff,
             fill: 0x000000ff,

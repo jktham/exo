@@ -68,7 +68,7 @@ pub fn draw_pixel(frame: &mut [u8], depth: &mut [f64], p: DVec3, color: u32) {
 }
 
 pub fn bresenham(p0: DVec3, p1: DVec3) -> Vec<DVec3> {
-    if out_of_bounds(p0, 0) || out_of_bounds(p1, 0) { return vec![]; };
+    if out_of_bounds(p0, 0) && out_of_bounds(p1, 0) { return vec![]; };
     let (mut x0, mut y0, mut z0) = (p0.x as i32, p0.y as i32, p0.z);
     let (mut x1, mut y1, mut z1) = (p1.x as i32, p1.y as i32, p1.z);
 
@@ -166,7 +166,7 @@ pub fn map_outline(outline_lines: &Vec<DVec3>) -> HashMap::<i32, HashSet<i32, Fx
 }
 
 pub fn draw_line(frame: &mut [u8], depth: &mut [f64], p0: DVec3, p1: DVec3, color: u32) {
-    if out_of_bounds(p0, 0) || out_of_bounds(p1, 0) { return; };
+    if out_of_bounds(p0, 0) && out_of_bounds(p1, 0) { return; };
 
     let line = bresenham(p0, p1);
     for p in line {
@@ -175,7 +175,7 @@ pub fn draw_line(frame: &mut [u8], depth: &mut [f64], p0: DVec3, p1: DVec3, colo
 }
 
 pub fn draw_triangle_fill_outline(frame: &mut [u8], depth: &mut [f64], p0: DVec3, p1: DVec3, p2: DVec3, outline_lines: &Vec<DVec3>, color: u32, fill: u32) {
-    if out_of_bounds(p0, 0) || out_of_bounds(p1, 0) || out_of_bounds(p2, 0) { return; };
+    if out_of_bounds(p0, 0) && out_of_bounds(p1, 0) && out_of_bounds(p2, 0) { return; };
     
     let mut lines = vec![];
     lines.append(&mut bresenham(p0, p1));
@@ -307,21 +307,23 @@ pub fn draw_polygon_3d(frame: &mut [u8], depth: &mut [f64], polygon: &Vec<DVec3>
 
     } else if polygon.len() >= 3 {
         let normal = (polygon[1] - polygon[0]).cross(polygon[2] - polygon[0]).normalize() * 10.0;
-        if fill != 0x00000000 && normal.dot(camera.position - polygon[0]) >= 0.0 {
-            let outline_points: Vec<DVec3> = polygon.iter().map(|v| transform_world_to_screen(*v, camera)).collect();
-            let mut outline_lines = vec![];
-            for i in 0..outline_points.len() {
-                outline_lines.append(&mut bresenham(outline_points[i], outline_points[(i+1) % outline_points.len()]));
-            }
-            for i in 2..polygon.len() {
-                let v0 = polygon[0];
-                let v1 = polygon[i-1];
-                let v2 = polygon[i];
-                draw_triangle_fill_outline_3d(frame, depth, v0, v1, v2, &outline_lines, camera, color, fill);
-            }
-        } else {
-            for i in 0..polygon.len() {
-                draw_line_3d(frame, depth, polygon[i], polygon[(i+1) % polygon.len()], camera, color);
+        if normal.dot(camera.position - polygon[0]) >= 0.0 {
+            if fill != 0x00000000 {
+                let outline_points: Vec<DVec3> = polygon.iter().map(|v| transform_world_to_screen(*v, camera)).collect();
+                let mut outline_lines = vec![];
+                for i in 0..outline_points.len() {
+                    outline_lines.append(&mut bresenham(outline_points[i], outline_points[(i+1) % outline_points.len()]));
+                }
+                for i in 2..polygon.len() {
+                    let v0 = polygon[0];
+                    let v1 = polygon[i-1];
+                    let v2 = polygon[i];
+                    draw_triangle_fill_outline_3d(frame, depth, v0, v1, v2, &outline_lines, camera, color, fill);
+                }
+            } else {
+                for i in 0..polygon.len() {
+                    draw_line_3d(frame, depth, polygon[i], polygon[(i+1) % polygon.len()], camera, color);
+                }
             }
         }
     }
